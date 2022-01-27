@@ -10,3 +10,6 @@
 [submodule "OpenGL-Core/vendor/imgui"]
 	path = OpenGL-Core/vendor/imgui
 	url = https://github.com/NullSeile/imgui
+[submodule "FractalVisualizer/vendor/ImGuiColorTextEdit"]
+	path = FractalVisualizer/vendor/ImGuiColorTextEdit
+	url = https://github.com/NullSeile/ImGuiColorTextEdit.git

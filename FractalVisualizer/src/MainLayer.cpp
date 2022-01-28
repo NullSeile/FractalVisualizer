@@ -183,6 +183,7 @@ MainLayer::MainLayer()
 	, m_Mandelbrot(m_MandelbrotSrcPath)
 	, m_JuliaSrcPath("assets/julia.glsl")
 	, m_Julia(m_JuliaSrcPath)
+	, m_Editor()
 {
 	RefreshColorFunctions();
 
@@ -197,6 +198,21 @@ MainLayer::MainLayer()
 
 	m_Mandelbrot.SetCenter({ -0.5, 0 });
 	m_Julia.SetRadius(1.3);
+
+	m_Editor.SetLanguageDefinition(TextEditor::LanguageDefinition::GLSL());
+	m_Editor.SetShowWhitespaces(false);
+
+	//{
+	//	static const char* fileToEdit = "assets/";
+	//	std::ifstream t(fileToEdit);
+	//	if (t.good())
+	//	{
+	//		std::string str((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
+	//		m_Editor.SetText(str);
+	//	}
+	//	else
+	//		exit(1);
+	//}
 }
 
 MainLayer::~MainLayer()
@@ -325,6 +341,13 @@ void MainLayer::OnImGuiRender()
 	}
 
 	//ImGui::ShowDemoWindow();
+
+	if (m_ShowEditor)
+	{
+		if (ImGui::Begin("Text Editor Demo", &m_ShowEditor, ImGuiWindowFlags_HorizontalScrollbar))
+			m_Editor.Render("Text Editor");
+		ImGui::End();
+	}
 
 	// Mandelbrot
 	{
@@ -465,6 +488,12 @@ void MainLayer::OnImGuiRender()
 					m_selectedColor = i;
 					m_Mandelbrot.SetColorFunction(&m_colors[m_selectedColor]);
 					m_Julia.SetColorFunction(&m_colors[m_selectedColor]);
+				}
+
+				if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
+				{
+					m_ShowEditor = true;
+					m_Editor.SetText(m_colors[m_selectedColor].GetSource());
 				}
 
 				ImGui::PopStyleColor();

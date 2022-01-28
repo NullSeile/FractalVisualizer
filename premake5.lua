@@ -27,6 +27,7 @@ group "Dependencies"
 	include "OpenGL-Core/vendor/GLFW"
 	include "OpenGL-Core/vendor/Glad"
 	include "OpenGL-Core/vendor/imgui"
+	include "FractalVisualizer/vendor/ImGuiColorTextEdit"
 group ""
 
 include "OpenGL-Core"

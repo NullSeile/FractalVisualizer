@@ -18,11 +18,13 @@ project "FractalVisualizer"
 		"../OpenGL-Core/vendor",
 		"../OpenGL-Core/%{IncludeDir.glm}",
 		"../OpenGL-Core/%{IncludeDir.Glad}",
-		"../OpenGL-Core/%{IncludeDir.ImGui}"
+		"../OpenGL-Core/%{IncludeDir.ImGui}",
+		"vendor/ImGuiColorTextEdit"
 	}
 
 	links {
-		"OpenGL-Core"
+		"OpenGL-Core",
+		"ImGuiColorTextEdit"
 	}
 
 	postbuildcommands {

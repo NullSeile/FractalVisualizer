@@ -5,6 +5,7 @@
 
 #include "FractalVisualizer.h"
 #include "ColorFunction.h"
+#include <TextEditor.h>
 
 class MainLayer : public GLCore::Layer
 {
@@ -17,6 +18,9 @@ public:
 	virtual void OnUpdate(GLCore::Timestep ts) override;
 	virtual void OnImGuiRender() override;
 private:
+
+	TextEditor m_Editor;
+	bool m_ShowEditor = false;
 
 	void RefreshColorFunctions();
 	bool m_ShouldRefreshColors = false;

@@ -61,6 +61,7 @@ void main()
     {
         o_Data = uvec4(unpackDouble2x32(z.x), unpackDouble2x32(z.y));
         o_Iter = uvec2(epoch, iters);
+        o_Color = vec4(0.0, 0.0, 0.0, 0.0);
         return;
     }
 
@@ -82,7 +83,7 @@ void main()
     {
         o_Data = uvec4(unpackDouble2x32(z.x), unpackDouble2x32(z.y));
         o_Iter = uvec2(epoch, iters + i);
-        o_Color = vec4(0.0, 0.0, 0.0, 0.0);
+        o_Color = vec4(0.0, 0.0, 0.0, 1e-10);
     }
     else
     {

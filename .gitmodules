@@ -1,15 +1,7 @@
-[submodule "OpenGL-Core/vendor/glfw"]
-	path = OpenGL-Core/vendor/glfw
-	url = https://github.com/NullSeile/glfw
-[submodule "OpenGL-Core/vendor/spdlog"]
-	path = OpenGL-Core/vendor/spdlog
-	url = https://github.com/gabime/spdlog
-[submodule "OpenGL-Core/vendor/glm"]
-	path = OpenGL-Core/vendor/glm
-	url = https://github.com/g-truc/glm
-[submodule "OpenGL-Core/vendor/imgui"]
-	path = OpenGL-Core/vendor/imgui
-	url = https://github.com/NullSeile/imgui
 [submodule "FractalVisualizer/vendor/ImGuiColorTextEdit"]
 	path = FractalVisualizer/vendor/ImGuiColorTextEdit
 	url = https://github.com/NullSeile/ImGuiColorTextEdit.git
+
+[submodule "OpenGL-Core"]
+	path = OpenGL-Core
+	url = https://github.com/NullSeile/OpenGL-Core.git

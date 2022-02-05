@@ -13,7 +13,7 @@ public:
 	MainLayer();
 	~MainLayer();
 
-	//virtual void OnAttach() override;
+	virtual void OnAttach() override;
 	//virtual void OnDetach() override;
 	virtual void OnUpdate(GLCore::Timestep ts) override;
 	virtual void OnImGuiRender() override;
@@ -25,16 +25,18 @@ private:
 	void RefreshColorFunctions();
 	bool m_ShouldRefreshColors = false;
 
-	float frame_rate = 0;
+	float m_FrameRate = 0;
 
 	int m_ResolutionPercentage = 100;
 	int m_ItersPerFrame = 100;
-	int m_MaxEpochs = 0;
+	int m_MaxEpochs = 100;
 	bool m_SmoothColor = true;
 
-	std::vector<GLuint> m_colorsPreview;
-	std::vector<ColorFunction> m_colors;
-	size_t m_selectedColor = 0;
+	std::vector<GLuint> m_ColorsPreview;
+	std::vector<ColorFunction> m_Colors;
+	size_t m_SelectedColor = 0;
+	ImColor m_IterationsColor = { 1.f, 1.f, 1.f, 0.9f };
+	bool m_ShowHelp = true;
 	
 	//glm::dvec2 m_MandelbrotZ = { 0, 0 };
 	bool m_MandelbrotMinimized = true;

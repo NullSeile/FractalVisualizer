@@ -601,7 +601,7 @@ void MainLayer::OnImGuiRender()
 				if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
 				{
 					m_ShowEditor = true;
-					m_Editor.SetText(m_colors[m_selectedColor].GetSource());
+					m_Editor.SetText(m_Colors[m_SelectedColor].GetSource());
 				}
 
 				ImGui::PopStyleColor();

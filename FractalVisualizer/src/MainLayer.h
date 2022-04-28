@@ -38,6 +38,12 @@ private:
 	bool m_MandelbrotMinimized = true;
 	std::string m_MandelbrotSrcPath;
 	FractalVisualizer m_Mandelbrot;
+	bool zooming = false;
+	glm::dvec2 zoomPos;
+	double zoomRadius = 1e-5;
+	double zoomSpeed = 0.99;
+	int zoomFrames = 5;
+	int zoomCounter = 0;
 
 	glm::dvec2 m_JuliaC = { 0, 0 };
 	bool m_JuliaMinimized = true;

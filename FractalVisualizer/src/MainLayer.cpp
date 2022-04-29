@@ -274,18 +274,6 @@ ImVec2 WindowPosToImagePos(const ImVec2& windowPos, int resolutionPercentage)
 	return (windowPos - ImGui::GetWindowPos() - ImGui::GetWindowContentRegionMin()) * (resolutionPercentage / 100.f);
 }
 
-void ZoomToPos(FractalVisualizer& fract, const glm::dvec2& pos, double radius)
-{
-	ImVec2 screenPos = fract.MapPosToCoords(pos);
-
-	fract.SetRadius(radius);
-
-	glm::dvec2 endPos = fract.MapCoordsToPos(screenPos);
-
-	glm::dvec2 delta = endPos - pos;
-	fract.SetCenter(fract.GetCenter() - delta);
-}
-
 void FractalHandleInteract(FractalVisualizer& fract, int resolutionPercentage)
 {
 	ImGuiIO& io = ImGui::GetIO();
@@ -309,9 +297,14 @@ void FractalHandleInteract(FractalVisualizer& fract, int resolutionPercentage)
 
 	if (io.MouseWheel != 0)
 	{
-		double new_radius = fract.GetRadius() / std::pow(1.1f, io.MouseWheel);
+		glm::dvec2 iMousePos = fract.MapCoordsToPos(mousePos);
 
-		ZoomToPos(fract, fract.MapCoordsToPos(mousePos), new_radius);
+		fract.SetRadius(fract.GetRadius() / std::pow(1.1f, io.MouseWheel));
+
+		glm::dvec2 fMousePos = fract.MapCoordsToPos(mousePos);
+
+		glm::dvec2 delta = fMousePos - iMousePos;
+		fract.SetCenter(fract.GetCenter() - delta);
 	}
 }
 
@@ -430,37 +423,12 @@ void MainLayer::OnImGuiRender()
 
 			auto mousePos = WindowPosToImagePos(ImGui::GetMousePos(), m_ResolutionPercentage);
 
-			if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && io.KeyAlt)
-			{
-				zooming = true;
-				zoomPos = m_Mandelbrot.MapCoordsToPos(mousePos);
-			}
-
 			// Right click to set `julia c`
 			if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) ||
 				(ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0) && (io.MouseDelta.x != 0 || io.MouseDelta.y != 0)))
 			{
 				m_JuliaC = m_Mandelbrot.MapCoordsToPos(mousePos);
 				m_Julia.ResetRender();
-			}
-		}
-
-		if (zooming)
-		{
-			for (int i = 0; i < zoomFrames; i++)
-			{
-				m_Mandelbrot.Update();
-				glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			}
-
-			double new_radius = m_Mandelbrot.GetRadius() * zoomSpeed;
-
-			ZoomToPos(m_Mandelbrot, zoomPos, new_radius);
-
-			if (m_Mandelbrot.GetRadius() <= zoomRadius || ImGui::IsKeyPressed(ImGuiKey_Escape))
-			{
-				zooming = false;
-				zoomCounter = 0;
 			}
 		}
 

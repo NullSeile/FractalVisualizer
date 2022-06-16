@@ -192,8 +192,8 @@ MainLayer::MainLayer()
 	m_Mandelbrot.SetColorFunction(&m_Colors[m_SelectedColor]);
 	m_Julia.SetColorFunction(&m_Colors[m_SelectedColor]);
 
-	m_Mandelbrot.SetIterationsPerFrame(m_ItersPerFrame);
-	m_Julia.SetIterationsPerFrame(m_ItersPerFrame);
+	m_Mandelbrot.SetIterationsPerFrame(m_ItersPerSteps);
+	m_Julia.SetIterationsPerFrame(m_ItersPerSteps);
 
 	m_Mandelbrot.SetMaxEpochs(m_MaxEpochs);
 	m_Julia.SetMaxEpochs(m_MaxEpochs);
@@ -242,11 +242,14 @@ void MainLayer::OnUpdate(GLCore::Timestep ts)
 	GLint loc = glGetUniformLocation(m_Julia.GetShader(), "i_JuliaC");
 	glUniform2d(loc, m_JuliaC.x, m_JuliaC.y);
 
-	if (!m_MandelbrotMinimized)
-		m_Mandelbrot.Update();
+	for (int i = 0; i < m_StepsPerFrame; i++)
+	{
+		if (!m_MandelbrotMinimized)
+			m_Mandelbrot.Update();
 
-	if (!m_JuliaMinimized)
-		m_Julia.Update();
+		if (!m_JuliaMinimized)
+			m_Julia.Update();
+	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -274,37 +277,80 @@ ImVec2 WindowPosToImagePos(const ImVec2& windowPos, int resolutionPercentage)
 	return (windowPos - ImGui::GetWindowPos() - ImGui::GetWindowContentRegionMin()) * (resolutionPercentage / 100.f);
 }
 
+void ZoomToScreenPos(FractalVisualizer& fract, ImVec2 pos, double radius)
+{
+	glm::dvec2 iMousePos = fract.MapCoordsToPos(pos);
+
+	fract.SetRadius(radius);
+
+	glm::dvec2 fMousePos = fract.MapCoordsToPos(pos);
+
+	glm::dvec2 delta = fMousePos - iMousePos;
+	fract.SetCenter(fract.GetCenter() - delta);
+}
+
 void FractalHandleInteract(FractalVisualizer& fract, int resolutionPercentage)
 {
-	ImGuiIO& io = ImGui::GetIO();
-	auto mouseDeltaScaled = io.MouseDelta * (resolutionPercentage / 100.f);
-
-	auto mousePos = WindowPosToImagePos(ImGui::GetMousePos(), resolutionPercentage);
-	
-	if (ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0) && mousePos.y >= 0)
+	if (ImGui::IsWindowHovered())
 	{
-		if (mouseDeltaScaled.x != 0 || mouseDeltaScaled.y != 0)
+		ImGuiIO& io = ImGui::GetIO();
+		auto mouseDeltaScaled = io.MouseDelta * (resolutionPercentage / 100.f);
+
+		auto mousePos = WindowPosToImagePos(ImGui::GetMousePos(), resolutionPercentage);
+
+		if (ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0) && mousePos.y >= 0)
 		{
-			glm::dvec2 center = fract.MapCoordsToPos(fract.MapPosToCoords(fract.GetCenter()) - mouseDeltaScaled);
-			fract.SetCenter(center);
+			if (mouseDeltaScaled.x != 0 || mouseDeltaScaled.y != 0)
+			{
+				glm::dvec2 center = fract.MapCoordsToPos(fract.MapPosToCoords(fract.GetCenter()) - mouseDeltaScaled);
+				fract.SetCenter(center);
+			}
 		}
+
+		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && io.KeyCtrl)
+			fract.SetCenter(fract.MapCoordsToPos(mousePos));
 	}
+}
 
-	if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && io.KeyCtrl)
+struct SmoothZoomData
+{
+	double t = 0.0;
+	double start_radius;
+	double target_radius;
+	ImVec2 target_pos;
+};
+
+void FractalHandleZoom(FractalVisualizer& fract, int resolutionPercentage, float fps, bool smoothZoom, SmoothZoomData& data)
+{
+	auto io = ImGui::GetIO();
+
+	if (ImGui::IsWindowHovered() && io.MouseWheel != 0)
 	{
-		fract.SetCenter(fract.MapCoordsToPos(mousePos));
+		data.start_radius = fract.GetRadius();
+		data.target_radius = data.target_radius / std::pow(1.1f, io.MouseWheel);
+		data.target_pos = WindowPosToImagePos(ImGui::GetMousePos(), resolutionPercentage);
+		data.t = 0.0;
+
+		if (!smoothZoom)
+			data.t = 1.0;
+			ZoomToScreenPos(fract, data.target_pos, data.target_radius);
 	}
-
-	if (io.MouseWheel != 0)
+	if (smoothZoom)
 	{
-		glm::dvec2 iMousePos = fract.MapCoordsToPos(mousePos);
+		if (data.t < 1.0)
+		{
+			data.t += 8.0 / fps;
 
-		fract.SetRadius(fract.GetRadius() / std::pow(1.1f, io.MouseWheel));
+			if (data.t >= 1.0)
+				data.t = 1.0;
 
-		glm::dvec2 fMousePos = fract.MapCoordsToPos(mousePos);
+			// (1 - a^x) / (1 - a)
+			double a = 0.025;
+			double t = (1.0 - std::pow(a, data.t)) / (1.0 - a);
 
-		glm::dvec2 delta = fMousePos - iMousePos;
-		fract.SetCenter(fract.GetCenter() - delta);
+			double radius = data.start_radius * (1 - t) + data.target_radius * t;
+			ZoomToScreenPos(fract, data.target_pos, radius);
+		}
 	}
 }
 
@@ -314,9 +360,7 @@ void FractalHandleResize(FractalVisualizer& fract, int resolutionPercentage)
 
 	auto size = fract.GetSize();
 	if (glm::uvec2{ viewportPanelSizeScaled.x, viewportPanelSizeScaled.y } != size)
-	{
 		fract.SetSize(glm::uvec2{ viewportPanelSizeScaled.x, viewportPanelSizeScaled.y });
-	}
 }
 
 void DrawIterations(const glm::dvec2& z0, const glm::dvec2& c, const ImColor& baseColor, FractalVisualizer& fract, int resolutionPercentage)
@@ -339,15 +383,18 @@ void DrawIterations(const glm::dvec2& z0, const glm::dvec2& c, const ImColor& ba
 
 void PersistentMiddleClick(bool& clicked, glm::dvec2& pos, FractalVisualizer& fract, int resolutionPercentage)
 {
-	if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
+	if (ImGui::IsWindowHovered())
 	{
-		clicked = true;
-		auto mousePos = WindowPosToImagePos(ImGui::GetMousePos(), resolutionPercentage);
-		pos = fract.MapCoordsToPos(mousePos);
-	}
+		if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
+		{
+			clicked = true;
+			auto mousePos = WindowPosToImagePos(ImGui::GetMousePos(), resolutionPercentage);
+			pos = fract.MapCoordsToPos(mousePos);
+		}
 
-	if (ImGui::IsMouseReleased(ImGuiMouseButton_Middle) && !ImGui::GetIO().KeyCtrl)
-		clicked = false;
+		if (ImGui::IsMouseReleased(ImGuiMouseButton_Middle) && !ImGui::GetIO().KeyCtrl)
+			clicked = false;
+	}
 }
 
 void MainLayer::OnImGuiRender()
@@ -417,11 +464,21 @@ void MainLayer::OnImGuiRender()
 		ImGui::GetCurrentWindow()->DrawList->AddCallback(EnableBlendCallback, nullptr);
 
 		// Events
+		FractalHandleInteract(m_Mandelbrot, m_ResolutionPercentage);
+
+		static SmoothZoomData mandel_smooth_zoom{ m_Mandelbrot.GetRadius(), m_Mandelbrot.GetRadius(), 1.0 };
+		FractalHandleZoom(m_Mandelbrot, m_ResolutionPercentage, m_FrameRate, m_SmoothZoom, mandel_smooth_zoom);
+
+		static bool showIters = false;
+		static glm::dvec2 c;
+		PersistentMiddleClick(showIters, c, m_Mandelbrot, m_ResolutionPercentage);
+
+		if (showIters)
+			DrawIterations(c, c, m_IterationsColor, m_Mandelbrot, m_ResolutionPercentage);
+
 		if (ImGui::IsWindowHovered())
 		{
-			FractalHandleInteract(m_Mandelbrot, m_ResolutionPercentage);
-
-			auto mousePos = WindowPosToImagePos(ImGui::GetMousePos(), m_ResolutionPercentage);
+			ImVec2 mousePos = WindowPosToImagePos(ImGui::GetMousePos(), m_ResolutionPercentage);
 
 			// Right click to set `julia c`
 			if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) ||
@@ -431,14 +488,6 @@ void MainLayer::OnImGuiRender()
 				m_Julia.ResetRender();
 			}
 		}
-
-		static bool showIters = false;
-		static glm::dvec2 c;
-		if (ImGui::IsWindowHovered())
-			PersistentMiddleClick(showIters, c, m_Mandelbrot, m_ResolutionPercentage);
-
-		if (showIters)
-			DrawIterations(c, c, m_IterationsColor, m_Mandelbrot, m_ResolutionPercentage);
 
 		ImGui::End();
 		ImGui::PopStyleVar();
@@ -458,13 +507,14 @@ void MainLayer::OnImGuiRender()
 		ImGui::GetCurrentWindow()->DrawList->AddCallback(EnableBlendCallback, nullptr);
 
 		// Events
-		if (ImGui::IsWindowHovered())
-			FractalHandleInteract(m_Julia, m_ResolutionPercentage);
+		FractalHandleInteract(m_Julia, m_ResolutionPercentage);
+
+		static SmoothZoomData julia_smooth_zoom{ m_Julia.GetRadius(), m_Julia.GetRadius(), 1.0 };
+		FractalHandleZoom(m_Julia, m_ResolutionPercentage, m_FrameRate, m_SmoothZoom, julia_smooth_zoom);
 
 		static bool showIters = false;
 		static glm::dvec2 z;
-		if (ImGui::IsWindowHovered())
-			PersistentMiddleClick(showIters, z, m_Julia, m_ResolutionPercentage);
+		PersistentMiddleClick(showIters, z, m_Julia, m_ResolutionPercentage);
 
 		if (showIters)
 			DrawIterations(z, m_JuliaC, m_IterationsColor, m_Julia, m_ResolutionPercentage);
@@ -486,10 +536,16 @@ void MainLayer::OnImGuiRender()
 
 		if (ImGui::CollapsingHeader("General"))
 		{
-			if (ImGui::DragInt("Iterations per frame", &m_ItersPerFrame, 10, 1, 10000, "%d", ImGuiSliderFlags_AlwaysClamp))
+			if (ImGui::DragInt("Iterations per step", &m_ItersPerSteps, 10, 1, 10000, "%d", ImGuiSliderFlags_AlwaysClamp))
 			{
-				m_Mandelbrot.SetIterationsPerFrame(m_ItersPerFrame);
-				m_Julia.SetIterationsPerFrame(m_ItersPerFrame);
+				m_Mandelbrot.SetIterationsPerFrame(m_ItersPerSteps);
+				m_Julia.SetIterationsPerFrame(m_ItersPerSteps);
+			}
+
+			if (ImGui::DragInt("Steps per frame", &m_StepsPerFrame, 1, 1, 100, "%d", ImGuiSliderFlags_AlwaysClamp))
+			{
+				m_Mandelbrot.ResetRender();
+				m_Julia.ResetRender();
 			}
 
 			if (ImGui::DragInt("Resolution percentage", &m_ResolutionPercentage, 1, 30, 500, "%d%%", ImGuiSliderFlags_AlwaysClamp))
@@ -539,6 +595,8 @@ void MainLayer::OnImGuiRender()
 			ImGui::ColorEdit4("Iterations color", &m_IterationsColor.Value.x);
 
 			ImGui::SameLine(); HelpMarker("Press the middle mouse button to show the first iterations at that point");
+
+			ImGui::Checkbox("Smooth Zoom", &m_SmoothZoom);
 
 			ImGui::Spacing();
 		}

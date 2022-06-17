@@ -641,14 +641,17 @@ void MainLayer::OnImGuiRender()
 			{
 				if (DragFloatR(u.name, &u.val, u.speed, u.range.x, u.range.y, u.default_val))
 				{
-					updated = true;
 					m_Mandelbrot.ResetRender();
 					m_Julia.ResetRender();
 
-					auto shader = m_ColorsPreview[m_SelectedColor].shaderID;
-					glUseProgram(shader);
-					GLint loc = glGetUniformLocation(shader, u.name.c_str());
-					glUniform1f(loc, u.val);
+					if (u.update)
+					{
+						updated = true;
+						auto shader = m_ColorsPreview[m_SelectedColor].shaderID;
+						glUseProgram(shader);
+						GLint loc = glGetUniformLocation(shader, u.name.c_str());
+						glUniform1f(loc, u.val);
+					}
 				}
 			}
 
@@ -664,7 +667,6 @@ void MainLayer::OnImGuiRender()
 
 				glUseProgram(m_ColorsPreview[m_SelectedColor].shaderID);
 
-				// Drawing
 				glViewport(0, 0, previewSize.x, previewSize.y);
 				glDisable(GL_BLEND);
 

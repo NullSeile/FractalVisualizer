@@ -13,9 +13,10 @@ public:
 		float default_val;
 		float val;
 		float speed;
+		bool update;
 
-		Uniform(const std::string& name, const glm::vec2& range, float default_val, float speed)
-			: name(name), range(range), default_val(default_val), val(default_val), speed(speed) {}
+		Uniform(const std::string& name, const glm::vec2& range, float default_val, float speed, bool update)
+			: name(name), range(range), default_val(default_val), val(default_val), speed(speed), update(update) {}
 	};
 
 private:

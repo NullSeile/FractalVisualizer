@@ -1,4 +1,4 @@
-#uniform colorMult 50 1 3 NULL;
+#uniform colorMult 50 1 3 NULL false;
 #uniform offset 0 0.02 0 2;
 #define PI 3.1415926535
 vec3 get_color(int i)

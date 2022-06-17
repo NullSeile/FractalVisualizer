@@ -1,4 +1,4 @@
-#uniform colorMult 100 1 1 NULL;
+#uniform colorMult 100 1 1 NULL false;
 #uniform saturation 1 0.01 0 1;
 #uniform brightness 1 0.01 0 1;
 #uniform offset 0 0.01 0 1;

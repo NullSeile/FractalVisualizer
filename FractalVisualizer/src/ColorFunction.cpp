@@ -16,6 +16,15 @@ ColorFunction::ColorFunction(const std::string& src) : m_src(src)
 		float val, speed;
 		ss >> name >> val >> speed >> min_s >> max_s;
 
+		bool update = true;
+		if (ss.rdbuf()->in_avail() > 0)
+		{
+			std::string update_s;
+			ss >> update_s;
+			if (update_s == "false")
+				update = false;
+		}
+
 		glm::vec2 range;
 		range.x = (min_s == "NULL" ? FLT_MIN : std::stof(min_s));
 		range.y = (max_s == "NULL" ? FLT_MAX : std::stof(max_s));
@@ -26,7 +35,7 @@ ColorFunction::ColorFunction(const std::string& src) : m_src(src)
 		m_src.erase(start, end - start);
 		m_src.insert(start, uniform.str());
 
-		m_uniforms.emplace_back(name, range, val, speed);
+		m_uniforms.emplace_back(name, range, val, speed, update);
 	}
 }
 

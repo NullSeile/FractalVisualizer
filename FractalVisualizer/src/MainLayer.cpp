@@ -59,6 +59,28 @@ static void HelpMarker(const char* desc)
 	}
 }
 
+static bool DragFloatR(const std::string& label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, float v_default = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
+{
+	ImGuiStyle style = ImGui::GetStyle();
+
+	bool value_changed = false;
+
+	std::string name = "##" + label;
+	value_changed |= ImGui::DragFloat(name.c_str(), v, v_speed, v_min, v_max);
+
+	ImGui::SameLine(0, style.ItemInnerSpacing.x);
+	const float button_size = ImGui::GetFrameHeight();
+	if (ImGui::Button("R", ImVec2(button_size, button_size)))
+	{
+		*v = v_default;
+		value_changed = true;
+	}
+	ImGui::SameLine(0, style.ItemInnerSpacing.x);
+	ImGui::Text(label.c_str());
+
+	return value_changed;
+}
+
 template<size_t file_size>
 static bool SaveImageDialog(char (&fileName)[file_size])
 {
@@ -647,7 +669,7 @@ void MainLayer::OnImGuiRender()
 			ImGui::Text("Color function parameters");
 			for (auto& u : m_Colors[m_SelectedColor].GetUniforms())
 			{
-				if (ImGui::DragFloat(u.name.c_str(), &u.val, u.speed, u.range.x, u.range.y))
+				if (DragFloatR(u.name, &u.val, u.speed, u.range.x, u.range.y, u.default_val))
 				{
 					m_Mandelbrot.ResetRender();
 					m_Julia.ResetRender();

@@ -19,6 +19,13 @@ public:
 
 private:
 
+	struct ColorPreview
+	{
+		ColorPreview(GLuint texture, GLuint shader) : textureID(texture), shaderID(shader) {}
+		GLuint textureID;
+		GLuint shaderID;
+	};
+
 	void RefreshColorFunctions();
 	bool m_ShouldRefreshColors = false;
 
@@ -31,7 +38,7 @@ private:
 	bool m_SmoothColor = true;
 	bool m_SmoothZoom = true;
 
-	std::vector<GLuint> m_ColorsPreview;
+	std::vector<ColorPreview> m_ColorsPreview;
 	std::vector<ColorFunction> m_Colors;
 	size_t m_SelectedColor = 0;
 	ImColor m_IterationsColor = { 1.f, 1.f, 1.f, 0.9f };

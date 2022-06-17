@@ -8,6 +8,8 @@
 #include <imgui_internal.h>
 #include "ImGuiUtils.h"
 
+static glm::uvec2 previewSize = { 100, 1 };
+
 ImVec2 operator+(const ImVec2& l, const ImVec2& r)
 {
 	return { l.x + r.x, l.y + r.y };
@@ -74,7 +76,10 @@ void MainLayer::RefreshColorFunctions()
 	m_Colors.clear();
 
 	for (auto prev : m_ColorsPreview)
-		glDeleteTextures(1, &prev);
+	{
+		glDeleteTextures(1, &prev.textureID);
+		glDeleteProgram(prev.shaderID);
+	}
 	m_ColorsPreview.clear();
 
 	// Allocate new colors
@@ -95,8 +100,6 @@ void MainLayer::RefreshColorFunctions()
 	for (const auto& c : m_Colors)
 	{
 		// Make the preview
-		glm::uvec2 previewSize = { 100, 1 };
-		
 		GLuint tex;
 		glGenTextures(1, &tex);
 		glBindTexture(GL_TEXTURE_2D, tex);
@@ -154,10 +157,7 @@ outColor = get_color(i);
 		glBindVertexArray(GLCore::Application::GetDefaultQuadVA());
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
-		// Cleaning up
-		glDeleteProgram(shader);
-
-		m_ColorsPreview.push_back(tex);
+		m_ColorsPreview.emplace_back(tex, shader);
 	}
 	glDeleteFramebuffers(1, &fb);
 
@@ -195,7 +195,10 @@ MainLayer::MainLayer()
 MainLayer::~MainLayer()
 {
 	for (auto prev : m_ColorsPreview)
-		glDeleteTextures(1, &prev);
+	{
+		glDeleteTextures(1, &prev.textureID);
+		glDeleteProgram(prev.shaderID);
+	}
 }
 
 void MainLayer::OnAttach()
@@ -612,7 +615,7 @@ void MainLayer::OnImGuiRender()
 				else
 					ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_Button]);
 
-				if (ImGui::ImageButton((ImTextureID)(intptr_t)m_ColorsPreview[i], button_size))
+				if (ImGui::ImageButton((ImTextureID)(intptr_t)m_ColorsPreview[i].textureID, button_size))
 				{
 					m_SelectedColor = i;
 					m_Mandelbrot.SetColorFunction(&m_Colors[m_SelectedColor]);
@@ -630,15 +633,47 @@ void MainLayer::OnImGuiRender()
 				ImGui::PopID();
 			}
 
+			bool updated = false;
+
 			ImGui::Spacing();
 			ImGui::Text("Color function parameters");
 			for (auto& u : m_Colors[m_SelectedColor].GetUniforms())
 			{
 				if (DragFloatR(u.name, &u.val, u.speed, u.range.x, u.range.y, u.default_val))
 				{
+					updated = true;
 					m_Mandelbrot.ResetRender();
 					m_Julia.ResetRender();
+
+					auto shader = m_ColorsPreview[m_SelectedColor].shaderID;
+					glUseProgram(shader);
+					GLint loc = glGetUniformLocation(shader, u.name.c_str());
+					glUniform1f(loc, u.val);
 				}
+			}
+
+			if (updated)
+			{
+				GLuint fb;
+				glGenFramebuffers(1, &fb);
+				glBindFramebuffer(GL_FRAMEBUFFER, fb);
+
+				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_ColorsPreview[m_SelectedColor].textureID, 0);
+				GLenum buffers[] = { GL_COLOR_ATTACHMENT0 };
+				glDrawBuffers(1, buffers);
+
+				glUseProgram(m_ColorsPreview[m_SelectedColor].shaderID);
+
+				// Drawing
+				glViewport(0, 0, previewSize.x, previewSize.y);
+				glDisable(GL_BLEND);
+
+				glBindVertexArray(GLCore::Application::GetDefaultQuadVA());
+				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+
+				glDeleteFramebuffers(1, &fb);
+
+				glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			}
 
 			ImGui::Spacing();

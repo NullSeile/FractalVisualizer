@@ -6,6 +6,7 @@
 #include <commdlg.h>
 
 #include <imgui_internal.h>
+#include "ImGuiUtils.h"
 
 ImVec2 operator+(const ImVec2& l, const ImVec2& r)
 {
@@ -44,41 +45,6 @@ template<typename T>
 ImVec2 GlmToImVec(const glm::vec<2, T>& vec)
 {
 	return { (float)vec.x, (float)vec.y };
-}
-
-static void HelpMarker(const char* desc)
-{
-	ImGui::TextDisabled("(?)");
-	if (ImGui::IsItemHovered())
-	{
-		ImGui::BeginTooltip();
-		ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-		ImGui::TextUnformatted(desc);
-		ImGui::PopTextWrapPos();
-		ImGui::EndTooltip();
-	}
-}
-
-static bool DragFloatR(const std::string& label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, float v_default = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
-{
-	ImGuiStyle style = ImGui::GetStyle();
-
-	bool value_changed = false;
-
-	std::string name = "##" + label;
-	value_changed |= ImGui::DragFloat(name.c_str(), v, v_speed, v_min, v_max);
-
-	ImGui::SameLine(0, style.ItemInnerSpacing.x);
-	const float button_size = ImGui::GetFrameHeight();
-	if (ImGui::Button("R", ImVec2(button_size, button_size)))
-	{
-		*v = v_default;
-		value_changed = true;
-	}
-	ImGui::SameLine(0, style.ItemInnerSpacing.x);
-	ImGui::Text(label.c_str());
-
-	return value_changed;
 }
 
 template<size_t file_size>
@@ -123,14 +89,14 @@ void MainLayer::RefreshColorFunctions()
 	m_ColorsPreview.reserve(m_Colors.size());
 	for (const auto& c : m_Colors)
 	{
+		// Framebuffer
+		GLuint fb;
+		glGenFramebuffers(1, &fb);
+		glBindFramebuffer(GL_FRAMEBUFFER, fb);
+
 		// Make the preview
 		glm::uvec2 previewSize = { 100, 1 };
 		{
-			// Framebuffer
-			GLuint fb;
-			glGenFramebuffers(1, &fb);
-			glBindFramebuffer(GL_FRAMEBUFFER, fb);
-
 			GLuint tex;
 			glGenTextures(1, &tex);
 			glBindTexture(GL_TEXTURE_2D, tex);
@@ -189,11 +155,11 @@ void main()
 			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
 			// Cleaning up
-			glDeleteFramebuffers(1, &fb);
 			glDeleteProgram(shader);
 
 			m_ColorsPreview.push_back(tex);
 		}
+		glDeleteFramebuffers(1, &fb);
 	}
 
 	if (m_SelectedColor >= m_Colors.size())

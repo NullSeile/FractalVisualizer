@@ -85,40 +85,40 @@ void MainLayer::RefreshColorFunctions()
 		m_Colors.emplace_back(std::string((std::istreambuf_iterator<char>(colorSrc)), std::istreambuf_iterator<char>()));
 	}
 
+	// Framebuffer
+	GLuint fb;
+	glGenFramebuffers(1, &fb);
+	glBindFramebuffer(GL_FRAMEBUFFER, fb);
+
 	// Allocate the prevews
 	m_ColorsPreview.reserve(m_Colors.size());
 	for (const auto& c : m_Colors)
 	{
-		// Framebuffer
-		GLuint fb;
-		glGenFramebuffers(1, &fb);
-		glBindFramebuffer(GL_FRAMEBUFFER, fb);
-
 		// Make the preview
 		glm::uvec2 previewSize = { 100, 1 };
+		
+		GLuint tex;
+		glGenTextures(1, &tex);
+		glBindTexture(GL_TEXTURE_2D, tex);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, previewSize.x, previewSize.y, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+		GLenum buffers[] = { GL_COLOR_ATTACHMENT0 };
+		glDrawBuffers(1, buffers);
+
+		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		{
-			GLuint tex;
-			glGenTextures(1, &tex);
-			glBindTexture(GL_TEXTURE_2D, tex);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, previewSize.x, previewSize.y, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			std::cout << "Failed to create the color function preview framebuffer\n";
+			exit(EXIT_FAILURE);
+		}
 
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
-			GLenum buffers[] = { GL_COLOR_ATTACHMENT0 };
-			glDrawBuffers(1, buffers);
-
-			if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-			{
-				std::cout << "Failed to create the color function preview framebuffer\n";
-				exit(EXIT_FAILURE);
-			}
-
-			// Shader
-			std::stringstream ss;
-			ss << "#version 400\n\n";
-			ss << c.GetSource() << '\n';
-			ss << R"(
+		// Shader
+		std::stringstream ss;
+		ss << "#version 400\n\n";
+		ss << c.GetSource() << '\n';
+		ss << R"(
 layout (location = 0) out vec3 outColor;
 
 uniform uint range;
@@ -126,41 +126,40 @@ uniform uvec2 size;
 
 void main()
 {
-    int i = int((gl_FragCoord.x / size.x) * range);
-    outColor = get_color(i);
+int i = int((gl_FragCoord.x / size.x) * range);
+outColor = get_color(i);
 }
-		)";
+	)";
 
-			GLuint shader = GLCore::Utils::CreateShader(ss.str());
-			glUseProgram(shader);
-			GLint loc;
+		GLuint shader = GLCore::Utils::CreateShader(ss.str());
+		glUseProgram(shader);
+		GLint loc;
 
-			loc = glGetUniformLocation(shader, "range");
-			glUniform1ui(loc, 100);
+		loc = glGetUniformLocation(shader, "range");
+		glUniform1ui(loc, 100);
 
-			loc = glGetUniformLocation(shader, "size");
-			glUniform2ui(loc, previewSize.x, previewSize.y);
+		loc = glGetUniformLocation(shader, "size");
+		glUniform2ui(loc, previewSize.x, previewSize.y);
 
-			for (const auto& u : c.GetUniforms())
-			{
-				loc = glGetUniformLocation(shader, u.name.c_str());
-				glUniform1f(loc, u.default_val);
-			}
-
-			// Drawing
-			glViewport(0, 0, previewSize.x, previewSize.y);
-			glDisable(GL_BLEND);
-
-			glBindVertexArray(GLCore::Application::GetDefaultQuadVA());
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
-
-			// Cleaning up
-			glDeleteProgram(shader);
-
-			m_ColorsPreview.push_back(tex);
+		for (const auto& u : c.GetUniforms())
+		{
+			loc = glGetUniformLocation(shader, u.name.c_str());
+			glUniform1f(loc, u.default_val);
 		}
-		glDeleteFramebuffers(1, &fb);
+
+		// Drawing
+		glViewport(0, 0, previewSize.x, previewSize.y);
+		glDisable(GL_BLEND);
+
+		glBindVertexArray(GLCore::Application::GetDefaultQuadVA());
+		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+
+		// Cleaning up
+		glDeleteProgram(shader);
+
+		m_ColorsPreview.push_back(tex);
 	}
+	glDeleteFramebuffers(1, &fb);
 
 	if (m_SelectedColor >= m_Colors.size())
 		m_SelectedColor = 0;

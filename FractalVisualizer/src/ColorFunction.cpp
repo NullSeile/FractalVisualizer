@@ -42,6 +42,15 @@ ColorFunction::ColorFunction(const std::string& src)
 
 			uniform = new ColorUniform(name, def_color, true);
 		}
+		else if (type == "bool")
+		{
+			uniform_glsl_text = "uniform bool " + name;
+
+			bool def_val;
+			ss >> std::boolalpha >> def_val;
+
+			uniform = new BoolUniform(name, def_val, true);
+		}
 		else
 		{
 			LOG_ERROR("Uniform type `{0}' is not valid", type);

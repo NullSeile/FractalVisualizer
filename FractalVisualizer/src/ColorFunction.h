@@ -6,7 +6,8 @@
 enum class UniformType
 {
 	FLOAT,
-	COLOR
+	COLOR,
+	BOOL
 };
 
 struct Uniform
@@ -52,6 +53,22 @@ struct ColorUniform : public Uniform
 		glUseProgram(shader);
 		GLint location = glGetUniformLocation(shader, name.c_str());
 		glUniform3f(location, color.r, color.g, color.b);
+	}
+};
+
+struct BoolUniform : public Uniform
+{
+	bool val;
+	bool default_val;
+
+	BoolUniform(const std::string& name, bool default_val, bool update)
+		: Uniform(name, UniformType::BOOL, update), val(default_val), default_val(default_val) {}
+
+	void UpdateToShader(GLuint shader) override
+	{
+		glUseProgram(shader);
+		GLint location = glGetUniformLocation(shader, name.c_str());
+		glUniform1i(location, val ? GL_TRUE : GL_FALSE);
 	}
 };
 

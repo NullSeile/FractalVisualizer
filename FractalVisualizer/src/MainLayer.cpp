@@ -649,6 +649,11 @@ void MainLayer::OnImGuiRender()
 					modified = ColorEdit3R(u->name.c_str(), glm::value_ptr(u->color), u->default_color);
 					break;
 				}
+				case UniformType::BOOL: {
+					auto u = dynamic_cast<BoolUniform*>(uniform);
+					modified = ImGui::Checkbox(u->name.c_str(), &u->val);
+					break;
+				}
 				default:{
 					LOG_ERROR("ERROR: uniform type with code `{0}` is not implemented", (int)uniform->type);
 					exit(EXIT_FAILURE);

@@ -20,12 +20,13 @@ static bool DragFloatR(const std::string& label, float* v, float v_speed = 1.0f,
 	ImGuiStyle style = ImGui::GetStyle();
 
 	bool value_changed = false;
+	const float button_size = ImGui::GetFrameHeight();
 
+	ImGui::SetNextItemWidth(std::max(1.0f, ImGui::CalcItemWidth() - (button_size + style.ItemInnerSpacing.x)));
 	std::string d_name = "##" + label;
 	value_changed |= ImGui::DragFloat(d_name.c_str(), v, v_speed, v_min, v_max);
 
 	ImGui::SameLine(0, style.ItemInnerSpacing.x);
-	const float button_size = ImGui::GetFrameHeight();
 
 	std::string r_name = "R##" + label;
 	if (ImGui::Button(r_name.c_str(), ImVec2(button_size, button_size)))

@@ -2,7 +2,7 @@
 #uniform color color1 1 1 1;
 #uniform color color2 0.3 0 1;
 
-vec3 get_color(int i)
+vec3 get_color(float i)
 {
     float t = exp(-i / colorMult);
     return mix(color2, color1, t);

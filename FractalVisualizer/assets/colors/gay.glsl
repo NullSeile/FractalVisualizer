@@ -9,7 +9,7 @@ vec3 hsv2rgb(vec3 c)
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
-vec3 get_color(int i)
+vec3 get_color(float i)
 {
     return hsv2rgb(vec3(i / colorMult + offset, saturation, brightness));
 }

@@ -654,9 +654,10 @@ void MainLayer::OnImGuiRender()
 					modified = ImGui::Checkbox(u->name.c_str(), &u->val);
 					break;
 				}
-				default:{
+				default: {
 					LOG_ERROR("ERROR: uniform type with code `{0}` is not implemented", (int)uniform->type);
 					exit(EXIT_FAILURE);
+					break;
 				}
 				}
 				if (modified)

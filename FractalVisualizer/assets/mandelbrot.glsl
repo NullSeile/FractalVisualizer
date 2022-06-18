@@ -99,10 +99,7 @@ void main()
 
             float new_iter = n + 1 - nu + 1.3;
 
-            vec3 color1 = get_color(int(new_iter));
-            vec3 color2 = get_color(int(new_iter) + 1);
-
-            color = mix(color1, color2, fract(new_iter));
+            color = get_color(new_iter);
         }
         else
             color = get_color(n);

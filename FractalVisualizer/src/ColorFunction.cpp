@@ -44,7 +44,7 @@ ColorFunction::ColorFunction(const std::string& src) : m_src(src)
 		}
 		else
 		{
-			std::cout << "ERROR: uniform type `" << type << "' is not valid\n";
+			LOG_ERROR("Uniform type `{0}' is not valid", type);
 			exit(EXIT_FAILURE);
 		}
 

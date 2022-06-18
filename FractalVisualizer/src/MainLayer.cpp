@@ -113,7 +113,7 @@ void MainLayer::RefreshColorFunctions()
 
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		{
-			std::cout << "Failed to create the color function preview framebuffer\n";
+			LOG_ERROR("Failed to create the color function preview framebuffer");
 			exit(EXIT_FAILURE);
 		}
 

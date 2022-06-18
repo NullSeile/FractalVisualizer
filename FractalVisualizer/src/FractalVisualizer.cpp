@@ -147,7 +147,7 @@ void FractalVisualizer::SetColorFunction(ColorFunction* const colorFunc)
 	size_t color_loc = source.find("#color");
 	if (color_loc == std::string::npos)
 	{
-		std::cout << "ERROR: Shader does not have '#color'";
+		LOG_ERROR("Shader does not have '#color'");
 		exit(EXIT_FAILURE);
 	}
 	source.erase(color_loc, 6);
@@ -274,7 +274,8 @@ void FractalVisualizer::CreateFramebuffer()
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 	{
-		std::cout << "Error creating framebuffer (" << m_Size.x << ", " << m_Size.y << ")\n";
+		LOG_ERROR("Failed to create fractal framebuffer ({0}, {1})", m_Size.x, m_Size.y);
+		exit(EXIT_FAILURE);
 	}
 
 	glGenTextures(1, &m_InData);

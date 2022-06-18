@@ -1,7 +1,7 @@
 #uniform float colorMult 100 1 1 NULL false;
 #uniform float saturation 1 0.01 0 1;
 #uniform float brightness 1 0.01 0 1;
-#uniform float offset 0 0.01 0 1;
+#uniform float offset 0 0.01 -1 1;
 vec3 hsv2rgb(vec3 c)
 {
     vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);

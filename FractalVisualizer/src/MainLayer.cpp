@@ -650,7 +650,7 @@ void MainLayer::OnImGuiRender()
 					break;
 				}
 				default:{
-					std::cerr << "ERROR: uniform type with code `" << (int)uniform->type << "` is not implemented\n";
+					LOG_ERROR("ERROR: uniform type with code `{0}` is not implemented", (int)uniform->type);
 					exit(EXIT_FAILURE);
 				}
 				}

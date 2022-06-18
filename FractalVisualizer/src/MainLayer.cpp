@@ -646,7 +646,7 @@ void MainLayer::OnImGuiRender()
 				}
 				case UniformType::COLOR: {
 					auto u = dynamic_cast<ColorUniform*>(uniform);
-					modified = ImGui::ColorEdit3(u->name.c_str(), glm::value_ptr(u->color));
+					modified = ColorEdit3R(u->name.c_str(), glm::value_ptr(u->color), u->default_color);
 					break;
 				}
 				default:{

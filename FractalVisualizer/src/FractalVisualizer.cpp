@@ -34,14 +34,10 @@ void FractalVisualizer::Update()
 	}
 
 	// Shader uniforms
+	m_ColorFunction->UpdateUniformsToShader(m_Shader);
+
 	glUseProgram(m_Shader);
 	GLint location;
-
-	for (const auto& u : m_ColorFunction->GetUniforms())
-	{
-		location = glGetUniformLocation(m_Shader, u.name.c_str());
-		glUniform1f(location, u.val);
-	}
 
 	location = glGetUniformLocation(m_Shader, "i_Size");
 	glUniform2ui(location, m_Size.x, m_Size.y);
@@ -163,11 +159,7 @@ void FractalVisualizer::SetColorFunction(ColorFunction* const colorFunc)
 	m_Shader = GLCore::Utils::CreateShader(source);
 	glUseProgram(m_Shader);
 
-	for (const auto& u : m_ColorFunction->GetUniforms())
-	{
-		GLint loc = glGetUniformLocation(m_Shader, u.name.c_str());
-		glUniform1f(loc, u.val);
-	}
+	m_ColorFunction->UpdateUniformsToShader(m_Shader);
 
 	int location = glGetUniformLocation(m_Shader, "i_Data");
 	glUniform1i(location, 0);

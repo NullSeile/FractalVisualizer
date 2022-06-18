@@ -144,11 +144,7 @@ outColor = get_color(i);
 		loc = glGetUniformLocation(shader, "size");
 		glUniform2ui(loc, previewSize.x, previewSize.y);
 
-		for (const auto& u : c.GetUniforms())
-		{
-			loc = glGetUniformLocation(shader, u.name.c_str());
-			glUniform1f(loc, u.default_val);
-		}
+		c.UpdateUniformsToShader(shader);
 
 		// Drawing
 		glViewport(0, 0, previewSize.x, previewSize.y);
@@ -637,20 +633,36 @@ void MainLayer::OnImGuiRender()
 
 			ImGui::Spacing();
 			ImGui::Text("Color function parameters");
-			for (auto& u : m_Colors[m_SelectedColor].GetUniforms())
+			for (Uniform* uniform : m_Colors[m_SelectedColor].GetUniforms())
 			{
-				if (DragFloatR(u.name, &u.val, u.speed, u.range.x, u.range.y, u.default_val))
+				bool modified = false;
+
+				switch (uniform->type)
+				{
+				case UniformType::FLOAT: {
+					auto u = dynamic_cast<FloatUniform*>(uniform);
+					modified = DragFloatR(u->name, &u->val, u->speed, u->range.x, u->range.y, u->default_val);
+					break;
+				}
+				case UniformType::COLOR: {
+					auto u = dynamic_cast<ColorUniform*>(uniform);
+					modified = ImGui::ColorEdit3(u->name.c_str(), glm::value_ptr(u->color));
+					break;
+				}
+				default:{
+					std::cerr << "ERROR: uniform type with code `" << (int)uniform->type << "` is not implemented\n";
+					exit(EXIT_FAILURE);
+				}
+				}
+				if (modified)
 				{
 					m_Mandelbrot.ResetRender();
 					m_Julia.ResetRender();
 
-					if (u.update)
+					if (uniform->update)
 					{
 						updated = true;
-						auto shader = m_ColorsPreview[m_SelectedColor].shaderID;
-						glUseProgram(shader);
-						GLint loc = glGetUniformLocation(shader, u.name.c_str());
-						glUniform1f(loc, u.val);
+						uniform->UpdateToShader(m_ColorsPreview[m_SelectedColor].shaderID);
 					}
 				}
 			}

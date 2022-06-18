@@ -1,5 +1,5 @@
-#uniform colorMult 25 1 1 NULL false;
-#uniform offset 0 0.05 0 4;
+#uniform float colorMult 25 1 1 NULL false;
+#uniform float offset 0 0.05 0 4;
 vec3 colors[] = vec3[](
 	vec3(0.0, 0.0, 0.0),
 	vec3(0.6, 0.22, 0.26),

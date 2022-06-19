@@ -1,4 +1,4 @@
-#uniform color color 1 1 1;
+#uniform color color 0.93 0.73 0.35;
 
 vec3 get_color(float i)
 {

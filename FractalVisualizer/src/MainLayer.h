@@ -21,9 +21,10 @@ private:
 
 	struct ColorPreview
 	{
-		ColorPreview(GLuint texture, GLuint shader) : textureID(texture), shaderID(shader) {}
-		GLuint textureID;
 		GLuint shaderID;
+		GLuint textureID;
+
+		ColorPreview(GLuint texture, GLuint shader) : textureID(texture), shaderID(shader) {}
 	};
 
 	void RefreshColorFunctions();

@@ -10,32 +10,6 @@
 
 static glm::uvec2 previewSize = { 100, 1 };
 
-ImVec2 operator+(const ImVec2& l, const ImVec2& r)
-{
-	return { l.x + r.x, l.y + r.y };
-}
-
-ImVec2 operator-(const ImVec2& l, const ImVec2& r)
-{
-	return { l.x - r.x, l.y - r.y };
-}
-
-ImVec2 operator*(const ImVec2& vec, float scalar)
-{
-	return { vec.x * scalar, vec.y * scalar };
-}
-
-ImVec2 operator/(const ImVec2& vec, float scalar)
-{
-	return { vec.x / scalar, vec.y / scalar };
-}
-
-std::ostream& operator<<(std::ostream& os, const ImVec2& vec)
-{
-	os << '(' << vec.x << ", " << vec.y << ')';
-	return os;
-}
-
 template<typename T>
 std::ostream& operator<<(std::ostream& os, const glm::vec<2, T>& vec)
 {
@@ -561,6 +535,7 @@ void MainLayer::OnImGuiRender()
 
 			ImGui::BeginDisabled(!limitEpochs);
 			{
+				ImGui::PushItemWidth(ImGui::CalcItemWidth() - ImGui::GetContentRegionAvail().x);
 				ImGui::Indent();
 
 				if (ImGui::DragInt("Max epochs", &max_epochs, 1, 1, 2000, "%d", ImGuiSliderFlags_AlwaysClamp))
@@ -572,6 +547,7 @@ void MainLayer::OnImGuiRender()
 				}
 
 				ImGui::Unindent();
+				ImGui::PopItemWidth();
 			}
 			ImGui::EndDisabled();
 
@@ -641,7 +617,7 @@ void MainLayer::OnImGuiRender()
 				{
 				case UniformType::FLOAT: {
 					auto u = dynamic_cast<FloatUniform*>(uniform);
-					modified = DragFloatR(u->name, &u->val, u->speed, u->range.x, u->range.y, u->default_val);
+					modified = DragFloatR(u->name.c_str(), &u->val, u->speed, u->range.x, u->range.y, u->default_val);
 					break;
 				}
 				case UniformType::COLOR: {

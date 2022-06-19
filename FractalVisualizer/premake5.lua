@@ -26,7 +26,9 @@ project "FractalVisualizer"
 	}
 
 	postbuildcommands {
-		"{COPYDIR} ./assets %{cfg.targetdir}/assets"
+		"{RMDIR} %{cfg.targetdir}/assets",
+		"{COPYDIR} ./assets %{cfg.targetdir}/assets",
+		"{COPYFILE} ./imgui.ini %{cfg.targetdir}/imgui.ini"
 	}
 
 	filter "system:windows"

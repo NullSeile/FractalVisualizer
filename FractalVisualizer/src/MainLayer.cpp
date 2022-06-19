@@ -389,10 +389,23 @@ void MainLayer::OnImGuiRender()
 		ImGui::Text("FEATURES:");
 		ImGui::BulletText("All panels (including this one) can be moved and docked wherever you want.");
 		ImGui::BulletText("You can edit (or add) the color functions by editing (or adding) the .glsl\n"
-						  "shaders in the ./assets/colors folder. In this files use the preprocessor\n"
-						  "command `#uniform <name> <default> <slider_speed> <min> <max>` to set a\n"
-						  "custom float uniform which will be exposed through the UI. You can set the\n"
-						  "min and/or max values to NULL to indicate it is unbounded.");
+						  "shader flies in the `./assets/colors` folder. In this files use the\n"
+						  "preprocessor command `#uniform` to set a custom uniform which will be exposed\n"
+						  "through the UI, under color function parameters. There are the following types\n"
+						  "of uniforms:");
+		ImGui::Indent();
+		{
+			ImGui::BulletText("`#uniform float <name> <default_value> <slider_increment> <min> <max>;`.\n"
+							  "Either min or max can be set to `NULL` to indicate it is unbounded.");
+			ImGui::BulletText("`#uniform bool <name> <default_value>;`. The default value must be either `true`\n"
+							  "or `false`.");
+			ImGui::BulletText("`#uniform color <default_red> <default_green> <default_blue>;`. The RGB values\n"
+							  "must be between 0 and 1.");
+
+			ImGui::Text("All uniform types accept an optional boolean parameter at the end (defaults to\n"
+						"`true`) which indicates whether this parameter should update the preview image.");
+		}
+		ImGui::Unindent();
 
 		ImGui::Spacing();
 		

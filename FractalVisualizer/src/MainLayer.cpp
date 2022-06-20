@@ -160,6 +160,12 @@ MainLayer::MainLayer()
 
 	m_Mandelbrot.SetCenter({ -0.5, 0 });
 	m_Julia.SetRadius(1.3);
+
+	m_MandelbrotZoomData.start_radius = m_Mandelbrot.GetRadius();
+	m_MandelbrotZoomData.target_radius = m_Mandelbrot.GetRadius();
+
+	m_JuliaZoomData.start_radius = m_Julia.GetRadius();
+	m_JuliaZoomData.target_radius = m_Julia.GetRadius();
 }
 
 MainLayer::~MainLayer()
@@ -271,14 +277,6 @@ void FractalHandleInteract(FractalVisualizer& fract, int resolutionPercentage)
 			fract.SetCenter(fract.MapCoordsToPos(mousePos));
 	}
 }
-
-struct SmoothZoomData
-{
-	double t = 0.0;
-	double start_radius;
-	double target_radius;
-	ImVec2 target_pos;
-};
 
 void FractalHandleZoom(FractalVisualizer& fract, int resolutionPercentage, float fps, bool smoothZoom, SmoothZoomData& data)
 {
@@ -438,9 +436,7 @@ void MainLayer::OnImGuiRender()
 
 		// Events
 		FractalHandleInteract(m_Mandelbrot, m_ResolutionPercentage);
-
-		static SmoothZoomData mandel_smooth_zoom{ m_Mandelbrot.GetRadius(), m_Mandelbrot.GetRadius(), 1.0 };
-		FractalHandleZoom(m_Mandelbrot, m_ResolutionPercentage, m_FrameRate, m_SmoothZoom, mandel_smooth_zoom);
+		FractalHandleZoom(m_Mandelbrot, m_ResolutionPercentage, m_FrameRate, m_SmoothZoom, m_MandelbrotZoomData);
 
 		static bool showIters = false;
 		static glm::dvec2 c;
@@ -481,9 +477,7 @@ void MainLayer::OnImGuiRender()
 
 		// Events
 		FractalHandleInteract(m_Julia, m_ResolutionPercentage);
-
-		static SmoothZoomData julia_smooth_zoom{ m_Julia.GetRadius(), m_Julia.GetRadius(), 1.0 };
-		FractalHandleZoom(m_Julia, m_ResolutionPercentage, m_FrameRate, m_SmoothZoom, julia_smooth_zoom);
+		FractalHandleZoom(m_Julia, m_ResolutionPercentage, m_FrameRate, m_SmoothZoom, m_JuliaZoomData);
 
 		static bool showIters = false;
 		static glm::dvec2 z;
@@ -703,8 +697,11 @@ void MainLayer::OnImGuiRender()
 			double rmin = 1e-15, rmax = 50;
 			double radius = m_Mandelbrot.GetRadius();
 			if (ImGui::DragScalar("Radius", ImGuiDataType_Double, &radius, 0.01f, &rmin, &rmax, "%e", ImGuiSliderFlags_Logarithmic))
+			{
 				m_Mandelbrot.SetRadius(radius);
-
+				m_MandelbrotZoomData.start_radius = radius;
+				m_MandelbrotZoomData.target_radius = radius;
+			}
 
 			if (ImGui::Button("Screenshot"))
 			{
@@ -735,7 +732,11 @@ void MainLayer::OnImGuiRender()
 			double rmin = 1e-15, rmax = 50;
 			double radius = m_Julia.GetRadius();
 			if (ImGui::DragScalar("Radius", ImGuiDataType_Double, &radius, 0.01f, &rmin, &rmax, "%e", ImGuiSliderFlags_Logarithmic))
+			{
 				m_Julia.SetRadius(radius);
+				m_JuliaZoomData.start_radius = radius;
+				m_JuliaZoomData.target_radius = radius;
+			}
 
 			if (ImGui::DragScalarN("C value", ImGuiDataType_Double, glm::value_ptr(m_JuliaC), 2, (float)m_Julia.GetRadius() * 1e-5f, &cmin, &cmax, "%.15f"))
 				m_Julia.ResetRender();

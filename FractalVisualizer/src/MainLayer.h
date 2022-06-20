@@ -6,6 +6,14 @@
 #include "FractalVisualizer.h"
 #include "ColorFunction.h"
 
+struct SmoothZoomData
+{
+	double t = 1.0;
+	double start_radius;
+	double target_radius;
+	ImVec2 target_pos;
+};
+
 class MainLayer : public GLCore::Layer
 {
 public:
@@ -45,11 +53,13 @@ private:
 	ImColor m_IterationsColor = { 1.f, 1.f, 1.f, 0.9f };
 	bool m_ShowHelp = true;
 	
+	SmoothZoomData m_MandelbrotZoomData;
 	bool m_MandelbrotMinimized = true;
 	//glm::dvec2 m_MandelbrotZ = { 0, 0 };
 	std::string m_MandelbrotSrcPath;
 	FractalVisualizer m_Mandelbrot;
 
+	SmoothZoomData m_JuliaZoomData;
 	bool m_JuliaMinimized = true;
 	glm::dvec2 m_JuliaC = { 0, 0 };
 	std::string m_JuliaSrcPath;

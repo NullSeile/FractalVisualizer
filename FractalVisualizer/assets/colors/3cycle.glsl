@@ -3,7 +3,9 @@
 #uniform color c1 0.20 0.10 0.07;
 #uniform color c2 0.14 0.39 0.45;
 #uniform color c3 0.96 0.70 0.18;
+#uniform bool sine_interp true;
 
+#define PI 3.1415926535
 vec3 colors[] = vec3[](c1, c2, c3, c1);
 vec3 get_color(float iters)
 {
@@ -13,10 +15,11 @@ vec3 get_color(float iters)
     if (x == colors.length())
         x = 0.0;
 
-    if (floor(x) == x)
-        return colors[int(x)];
-
     int i = int(floor(x));
     float t = fract(x);
+
+    if (sine_interp)
+        t = -cos(PI * t) * 0.5 + 0.5;
+
     return mix(colors[i], colors[i+1], t);
 }

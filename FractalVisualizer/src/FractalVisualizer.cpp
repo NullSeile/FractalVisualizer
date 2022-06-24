@@ -4,9 +4,14 @@
 #include <filesystem>
 
 
-static double map(const double& value, const double& inputMin, const double& inputMax, const double& outputMin, const double& outputMax)
+static double map(const double& x, const double& x0, const double& x1, const double& y0, const double& y1)
 {
-	return outputMin + ((outputMax - outputMin) / (inputMax - inputMin)) * (value - inputMin);
+	return y0 + ((y1 - y0) / (x1 - x0)) * (x - x0);
+}
+
+static double inv_map(const double& y, const double& y0, const double& y1, const double& x0, const double& x1)
+{
+	return (x0 * y - x1 * y + x1 * y0 - x0 * y1) / (y0 - y1);
 }
 
 FractalVisualizer::FractalVisualizer(const std::string& shaderSrcPath)

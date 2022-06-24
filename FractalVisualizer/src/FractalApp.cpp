@@ -9,6 +9,7 @@ public:
 	FractalApp()
 		: Application("Fractal Visualization")
 	{
+		GetWindow().SetIcon("assets/imgs/icon.png");
 		PushLayer(new MainLayer());
 	}
 };

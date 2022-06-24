@@ -39,7 +39,6 @@ private:
 	bool m_ShouldRefreshColors = false;
 
 	float m_FrameRate = 0;
-
 	int m_ResolutionPercentage = 100;
 	int m_ItersPerSteps = 100;
 	int m_StepsPerFrame = 1;

@@ -710,7 +710,8 @@ void MainLayer::OnImGuiRender()
 				sprintf_s(fileName, "mandelbrot_%.15f,%.15f", center.x, center.y);
 
 				if (SaveImageDialog(fileName))
-					GLCore::Utils::ExportTexture(m_Mandelbrot.GetTexture(), fileName, true);
+					if (!GLCore::Utils::ExportTexture(m_Mandelbrot.GetTexture(), fileName, true))
+						LOG_ERROR("Failed to export the image! :(");
 			}
 
 			ImGui::Spacing();
@@ -748,7 +749,8 @@ void MainLayer::OnImGuiRender()
 				sprintf_s(fileName, "julia_%.15f,%.15f", m_JuliaC.x, m_JuliaC.y);
 
 				if (SaveImageDialog(fileName))
-					GLCore::Utils::ExportTexture(m_Julia.GetTexture(), fileName, true);
+					if (!GLCore::Utils::ExportTexture(m_Julia.GetTexture(), fileName, true))
+						LOG_ERROR("Failed to export the image! :(");
 			}
 
 			ImGui::Spacing();

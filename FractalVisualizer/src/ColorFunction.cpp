@@ -28,7 +28,7 @@ ColorFunction::ColorFunction(const std::string& src)
 			ss >> val >> speed >> min_s >> max_s;
 
 			glm::vec2 range;
-			range.x = (min_s == "NULL" ? FLT_MIN : std::stof(min_s));
+			range.x = (min_s == "NULL" ? -FLT_MAX : std::stof(min_s));
 			range.y = (max_s == "NULL" ? FLT_MAX : std::stof(max_s));
 
 			uniform = new FloatUniform(name, range, val, speed, true);

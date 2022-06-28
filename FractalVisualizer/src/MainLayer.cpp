@@ -3,7 +3,7 @@
 #include <iomanip>
 #include <filesystem>
 #include <fstream>
-#include <commdlg.h>
+#include <format>
 
 #include <imgui_internal.h>
 #include "ImGuiUtils.h"
@@ -23,25 +23,12 @@ ImVec2 GlmToImVec(const glm::vec<2, T>& vec)
 	return { (float)vec.x, (float)vec.y };
 }
 
-template<size_t file_size>
-static bool SaveImageDialog(char (&fileName)[file_size])
+static bool SaveImageDialog(std::string& fileName)
 {
-	const char* filter = "PNG (*.png)\0*.png\0JPEG (*jpg; *jpeg)\0*.jpg;*.jpeg\0BMP (*.bmp)\0*.bmp\0TGA (*.tga)\0*.tga\0";
-
-	OPENFILENAMEA ofn;
-	ZeroMemory(&ofn, sizeof(OPENFILENAME));
-	ofn.lStructSize = sizeof(OPENFILENAME);
-	//ofn.hwndOwner = Application::Get().GetWindow().GetNativeWindow(); TODO ;-;
-	ofn.lpstrFile = fileName;
-	ofn.nMaxFile = sizeof(fileName);
-	ofn.lpstrFilter = filter;
-	ofn.nFilterIndex = 1;
-	ofn.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT;
-
-	// Sets the default extension by extracting it from the filter
-	ofn.lpstrDefExt = strchr(filter, '\0') + 1;
-
-	return GetSaveFileNameA(&ofn) == TRUE;
+	return GLCore::Application::Get().GetWindow().SaveFileDialog(
+		"PNG (*.png)\0*.png\0JPEG (*jpg; *jpeg)\0*.jpg;*.jpeg\0BMP (*.bmp)\0*.bmp\0TGA (*.tga)\0*.tga\0", 
+		fileName
+	);
 }
 
 void MainLayer::RefreshColorFunctions()
@@ -705,10 +692,7 @@ void MainLayer::OnImGuiRender()
 
 			if (ImGui::Button("Screenshot"))
 			{
-				CHAR fileName[260];
-				auto center = m_Mandelbrot.GetCenter();
-				sprintf_s(fileName, "mandelbrot_%.15f,%.15f", center.x, center.y);
-
+				std::string fileName = std::format("mandelbrot_{:.15f},{:.15f}", center.x, center.y);
 				if (SaveImageDialog(fileName))
 					if (!GLCore::Utils::ExportTexture(m_Mandelbrot.GetTexture(), fileName, true))
 						LOG_ERROR("Failed to export the image! :(");
@@ -745,9 +729,7 @@ void MainLayer::OnImGuiRender()
 
 			if (ImGui::Button("Screenshot"))
 			{
-				CHAR fileName[260];
-				sprintf_s(fileName, "julia_%.15f,%.15f", m_JuliaC.x, m_JuliaC.y);
-
+				std::string fileName = std::format("julia_{:.15f},{:.15f}", m_JuliaC.x, m_JuliaC.y);
 				if (SaveImageDialog(fileName))
 					if (!GLCore::Utils::ExportTexture(m_Julia.GetTexture(), fileName, true))
 						LOG_ERROR("Failed to export the image! :(");

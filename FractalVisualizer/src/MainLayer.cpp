@@ -5,6 +5,9 @@
 #include <fstream>
 #include <format>
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 #include <imgui_internal.h>
 #include "ImGuiUtils.h"
 
@@ -324,6 +327,11 @@ void DrawIterations(const glm::dvec2& z0, const glm::dvec2& c, const ImColor& ba
 		color.Value.w *= scale / (i + scale);
 		draw_list->AddLine(p0, p1, color, 2.f);
 	}
+}
+
+double sine_interp(const double& x)
+{
+	return -cos(M_PI * x) * 0.5 + 0.5;
 }
 
 void PersistentMiddleClick(bool& clicked, glm::dvec2& pos, FractalVisualizer& fract, int resolutionPercentage)
@@ -741,5 +749,208 @@ void MainLayer::OnImGuiRender()
 
 		ImGui::End(); // Controls
 		ImGui::PopStyleColor();
+	}
+
+	// Rendering
+	{
+		ImGui::Begin("Rendering");
+
+		if (ImGui::CollapsingHeader("Image"))
+		{
+			const char* items[] = { "Mandelbrot", "Julia" };
+			static int fractal_index = 0;
+			ImGui::Combo("Fractal", &fractal_index, items, IM_ARRAYSIZE(items));
+
+			auto& fract = fractal_index == 0 ? m_Mandelbrot : m_Julia;
+
+			static glm::ivec2 resolution(1920, 1080);
+			ImGui::InputInt2("Resolution", glm::value_ptr(resolution));
+
+			static int steps = 200;
+			ImGui::DragInt("Steps", &steps, 1, 10000);
+
+			static int iters_per_step = m_ItersPerSteps;
+			ImGui::DragInt("Iters per step", &iters_per_step, 1, 10000);
+
+			static glm::dvec2 center;
+			static double radius = 1.0;
+			if (ImGui::TreeNode("Position"))
+			{
+				ImGui::DragScalarN("Center", ImGuiDataType_Double, glm::value_ptr(center), 2, 0.01f, nullptr, nullptr, "%.15f");
+
+				double rmin = 1e-15, rmax = 50;
+				ImGui::DragScalar("Radius", ImGuiDataType_Double, &radius, 0.01f, &rmin, &rmax, "%e", ImGuiSliderFlags_Logarithmic);
+
+				if (ImGui::Button("Current"))
+				{
+					center = fract.GetCenter();
+					radius = fract.GetRadius();
+				}
+				ImGui::TreePop();
+			}
+
+			if (ImGui::Button("Render Image"))
+			{
+				std::string fileName = "output.png";
+				if (SaveImageDialog(fileName))
+				{
+					fract.SetCenter(center);
+					fract.SetRadius(radius);
+					fract.SetSize(resolution);
+					fract.SetIterationsPerFrame(iters_per_step);
+
+					fract.ResetRender();
+
+					for (int i = 0; i < steps; i++)
+						fract.Update();
+
+					GLCore::Utils::ExportTexture(fract.GetTexture(), fileName, true);
+
+					glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				}
+			}
+
+			ImGui::Spacing();
+		}
+
+		if (ImGui::CollapsingHeader("Video"))
+		{
+			const char* items[] = { "Mandelbrot", "Julia" };
+			static int fractal_index = 0;
+			ImGui::Combo("Fractal", &fractal_index, items, IM_ARRAYSIZE(items));
+
+			auto& fract = fractal_index == 0 ? m_Mandelbrot : m_Julia;
+
+			static glm::ivec2 resolution(1920, 1080);
+			ImGui::InputInt2("Resolution", glm::value_ptr(resolution));
+
+			static float duration = 10;
+			ImGui::DragFloat("Duration", &duration, 0.1f, 0.1f, 200.f);
+
+			static int fps = 30;
+			ImGui::DragInt("fps", &fps, 1, 1, 1000);
+
+			static int steps_per_frame = 5;
+			ImGui::DragInt("Steps per frame", &steps_per_frame, 1, 100);
+
+			static glm::dvec2 initial_center;
+			static double initial_radius = 1.0;
+			if (ImGui::TreeNode("Initial position"))
+			{
+				ImGui::PushItemWidth(ImGui::CalcItemWidth() - ImGui::GetContentRegionAvail().x);
+				ImGui::DragScalarN("Center", ImGuiDataType_Double, glm::value_ptr(initial_center), 2, 0.01f, nullptr, nullptr, "%.15f");
+
+				double rmin = 1e-15, rmax = 50;
+				ImGui::DragScalar("Radius", ImGuiDataType_Double, &initial_radius, 0.01f, &rmin, &rmax, "%e", ImGuiSliderFlags_Logarithmic);
+
+				if (ImGui::Button("Current"))
+				{
+					initial_center = fract.GetCenter();
+					initial_radius = fract.GetRadius();
+				}
+
+				ImGui::PopItemWidth();
+				ImGui::TreePop();
+			}
+
+			static glm::dvec2 final_center;
+			static double final_radius = 1e-5;
+			if (ImGui::TreeNode("Final position"))
+			{
+				ImGui::PushItemWidth(ImGui::CalcItemWidth() - ImGui::GetContentRegionAvail().x);
+				ImGui::DragScalarN("Position", ImGuiDataType_Double, glm::value_ptr(final_center), 2, 0.01f, nullptr, nullptr, "%.15f");
+
+				double rmin = 1e-15, rmax = 50;
+				ImGui::DragScalar("Radius", ImGuiDataType_Double, &final_radius, 0.01f, &rmin, &rmax, "%e", ImGuiSliderFlags_Logarithmic);
+
+				if (ImGui::Button("Current"))
+				{
+					final_center = fract.GetCenter();
+					final_radius = fract.GetRadius();
+				}
+
+				ImGui::PopItemWidth();
+				ImGui::TreePop();
+			}
+
+			if (ImGui::Button("Render Video"))
+			{
+				std::string fileName = "output.mp4";
+				if (GLCore::Application::Get().GetWindow().SaveFileDialog("mp4 (*.mp4)\0*.mp4\0", fileName))
+				{
+					fract.SetCenter(initial_center);
+					fract.SetRadius(initial_radius);
+					fract.SetSize(resolution);
+
+					size_t steps = (size_t)std::ceil(fps * duration);
+					double delta = std::pow(final_radius / initial_radius, 1.0 / steps);
+
+					size_t width = resolution.x;
+					size_t height = resolution.y;
+
+					ImVec2 inital_coords = fract.MapPosToCoords(final_center);
+					ImVec2 final_coords = ImVec2{ (float)width, (float)height } / 2.0;
+
+					fract.ResetRender();
+
+					BYTE* pixels = new BYTE[width * height * 4];
+
+					std::stringstream cmd;
+					cmd << "ffmpeg ";
+					cmd << "-y ";
+					//cmd << "-loglevel error ";
+
+					cmd << "-r " << fps << " ";
+					cmd << "-f rawvideo ";
+					cmd << "-pix_fmt rgba ";
+					cmd << "-s " << width << "x" << height << " ";
+					cmd << "-i - ";
+
+					cmd << "-vcodec libx264 ";
+					cmd << "-pix_fmt yuv420p ";
+					cmd << "-crf 15 ";
+					cmd << "-vf \"vflip, pad = ceil(iw / 2) * 2:ceil(ih / 2) * 2\" ";
+					cmd << "\"" << fileName << "\"";
+
+					std::cout << cmd.str() << '\n';
+
+					FILE* ffmpeg = _popen(cmd.str().c_str(), "wb");
+
+					for (int i = 0; i < steps; i++)
+					{
+						for (int f = 0; f < steps_per_frame; f++)
+							fract.Update();
+
+						glBindTexture(GL_TEXTURE_2D, fract.GetTexture());
+						glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+
+						fwrite(pixels, width * height * 4 * sizeof(BYTE), 1, ffmpeg);
+
+						double t = (i + 1) / (double)steps;
+
+						double new_radius = initial_radius * std::pow(delta, sine_interp(t) * steps);
+						fract.SetRadius(new_radius);
+
+						glm::dvec2 target_pos = fract.MapCoordsToPos(inital_coords * (1.f - (float)t) + final_coords * (float)t);
+
+						glm::dvec2 delta = target_pos - final_center;
+						fract.SetCenter(fract.GetCenter() - delta);
+					}
+
+					_pclose(ffmpeg);
+
+					delete[] pixels;
+
+					fract.SetCenter(initial_center);
+					fract.SetRadius(initial_radius);
+
+					glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				}
+			}
+		}
+
+
+
+		ImGui::End();
 	}
 }

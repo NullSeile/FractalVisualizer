@@ -878,18 +878,21 @@ void MainLayer::OnImGuiRender()
 				std::string fileName = "output.mp4";
 				if (GLCore::Application::Get().GetWindow().SaveFileDialog("mp4 (*.mp4)\0*.mp4\0", fileName))
 				{
+					const auto stored_center = fract.GetCenter();
+					const auto stored_radius = fract.GetRadius();
+
 					fract.SetCenter(initial_center);
 					fract.SetRadius(initial_radius);
 					fract.SetSize(resolution);
 
-					size_t steps = (size_t)std::ceil(fps * duration);
-					double delta = std::pow(final_radius / initial_radius, 1.0 / steps);
+					const size_t steps = (size_t)std::ceil(fps * duration);
+					const double delta = std::pow(final_radius / initial_radius, 1.0 / steps);
 
-					size_t width = resolution.x;
-					size_t height = resolution.y;
+					const size_t width = resolution.x;
+					const size_t height = resolution.y;
 
-					ImVec2 inital_coords = fract.MapPosToCoords(final_center);
-					ImVec2 final_coords = ImVec2{ (float)width, (float)height } / 2.0;
+					const ImVec2 inital_coords = fract.MapPosToCoords(final_center);
+					const ImVec2 final_coords = ImVec2{ (float)width, (float)height } / 2.0;
 
 					fract.ResetRender();
 
@@ -926,14 +929,14 @@ void MainLayer::OnImGuiRender()
 
 						fwrite(pixels, width * height * 4 * sizeof(BYTE), 1, ffmpeg);
 
-						double t = (i + 1) / (double)steps;
+						const double t = (i + 1) / (double)steps;
 
-						double new_radius = initial_radius * std::pow(delta, sine_interp(t) * steps);
+						const double new_radius = initial_radius * std::pow(delta, sine_interp(t) * steps);
 						fract.SetRadius(new_radius);
 
-						glm::dvec2 target_pos = fract.MapCoordsToPos(inital_coords * (1.f - (float)t) + final_coords * (float)t);
+						const glm::dvec2 target_pos = fract.MapCoordsToPos(inital_coords * (1.f - (float)t) + final_coords * (float)t);
 
-						glm::dvec2 delta = target_pos - final_center;
+						const glm::dvec2 delta = target_pos - final_center;
 						fract.SetCenter(fract.GetCenter() - delta);
 					}
 
@@ -941,8 +944,8 @@ void MainLayer::OnImGuiRender()
 
 					delete[] pixels;
 
-					fract.SetCenter(initial_center);
-					fract.SetRadius(initial_radius);
+					fract.SetCenter(stored_center);
+					fract.SetRadius(stored_radius);
 
 					glBindFramebuffer(GL_FRAMEBUFFER, 0);
 				}

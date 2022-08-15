@@ -51,7 +51,7 @@ void MainLayer::RefreshColorFunctions()
 	for (const auto& path : std::filesystem::directory_iterator("assets/colors"))
 	{
 		std::ifstream colorSrc(path.path());
-		m_Colors.emplace_back(std::string((std::istreambuf_iterator<char>(colorSrc)), std::istreambuf_iterator<char>()));
+		m_Colors.emplace_back(std::string((std::istreambuf_iterator<char>(colorSrc)), std::istreambuf_iterator<char>()), path.path().filename().replace_extension().string());
 	}
 
 	// Framebuffer
@@ -595,6 +595,8 @@ void MainLayer::OnImGuiRender()
 					m_Mandelbrot.SetColorFunction(&m_Colors[m_SelectedColor]);
 					m_Julia.SetColorFunction(&m_Colors[m_SelectedColor]);
 				}
+				if (ImGui::IsItemHovered() && GImGui->HoveredIdTimer > 0.5f)
+					ImGui::SetTooltip(m_Colors[i].GetName().c_str());
 
 				ImGui::PopStyleColor();
 

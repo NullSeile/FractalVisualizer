@@ -74,5 +74,6 @@ private:
 	GLuint m_FBO, m_Texture;
 	GLuint m_InData, m_OutData;
 	GLuint m_InIter, m_OutIter;
+	GLuint m_QuadVA, m_QuadVB, m_QuadIB;
 };
 

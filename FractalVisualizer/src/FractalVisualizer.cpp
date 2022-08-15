@@ -17,6 +17,28 @@ static double inv_map(const double& y, const double& y0, const double& y1, const
 FractalVisualizer::FractalVisualizer(const std::string& shaderSrcPath)
 {
 	SetShader(shaderSrcPath);
+
+	glGenVertexArrays(1, &m_QuadVA);
+	glBindVertexArray(m_QuadVA);
+
+	float vertices[] = {
+		-1.0f, -1.0f,
+		 1.0f, -1.0f,
+		 1.0f,  1.0f,
+		-1.0f,  1.0f
+	};
+
+	glGenBuffers(1, &m_QuadVB);
+	glBindBuffer(GL_ARRAY_BUFFER, m_QuadVB);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 2, 0);
+
+	uint32_t indices[] = { 0, 1, 2, 2, 3, 0 };
+	glGenBuffers(1, &m_QuadIB);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_QuadIB);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 }
 
 FractalVisualizer::~FractalVisualizer()
@@ -89,7 +111,7 @@ void FractalVisualizer::Update()
 	if (m_Frame == 0)
 		glDisable(GL_BLEND);
 
-	glBindVertexArray(GLCore::Application::GetDefaultQuadVA());
+	glBindVertexArray(m_QuadVA);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 
 	// Copy output buffers into input buffers

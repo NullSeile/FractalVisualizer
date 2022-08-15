@@ -77,10 +77,11 @@ class ColorFunction
 private:
 	std::vector<Uniform*> m_uniforms;
 	std::string m_src;
+	std::string m_name;
 
 public:
 
-	ColorFunction(const std::string& src);
+	ColorFunction(const std::string& src, const std::string& name);
 	~ColorFunction();
 
 	void UpdateUniformsToShader(GLuint shader) const;
@@ -89,5 +90,6 @@ public:
 
 	const std::vector<Uniform*>& GetUniforms() const;
 
+	const std::string& GetName() const;
 	const std::string& GetSource() const;
 };

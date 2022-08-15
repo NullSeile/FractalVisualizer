@@ -5,8 +5,8 @@ using namespace GLCore::Utils;
 
 static std::string uniform_s = "#uniform";
 
-ColorFunction::ColorFunction(const std::string& src) 
-	: m_src(src)
+ColorFunction::ColorFunction(const std::string& src, const std::string& name) 
+	: m_src(src), m_name(name)
 {
 	for (size_t start; (start = m_src.find(uniform_s + ' ')) != std::string::npos;)
 	{
@@ -92,6 +92,11 @@ std::vector<Uniform*>& ColorFunction::GetUniforms()
 const std::vector<Uniform*>& ColorFunction::GetUniforms() const
 {
 	return m_uniforms;
+}
+
+const std::string& ColorFunction::GetName() const
+{
+	return m_name;
 }
 
 const std::string& ColorFunction::GetSource() const

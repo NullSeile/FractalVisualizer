@@ -416,75 +416,6 @@ void MainLayer::OnImGuiRender()
 		ImGui::End();
 	}
 
-	// Mandelbrot
-	{
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
-		m_MandelbrotMinimized = !ImGui::Begin("Mandelbrot");
-
-		// Resize
-		FractalHandleResize(m_Mandelbrot, m_ResolutionPercentage);
-
-		// Draw
-		ImGui::GetCurrentWindow()->DrawList->AddCallback(DisableBlendCallback, nullptr);
-		ImGui::Image((ImTextureID)(intptr_t)m_Mandelbrot.GetTexture(), ImGui::GetContentRegionAvail(), ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
-		ImGui::GetCurrentWindow()->DrawList->AddCallback(EnableBlendCallback, nullptr);
-
-		// Events
-		FractalHandleInteract(m_Mandelbrot, m_ResolutionPercentage);
-		FractalHandleZoom(m_Mandelbrot, m_ResolutionPercentage, m_FrameRate, m_SmoothZoom, m_MandelbrotZoomData);
-
-		static bool showIters = false;
-		static glm::dvec2 c;
-		PersistentMiddleClick(showIters, c, m_Mandelbrot, m_ResolutionPercentage);
-
-		if (showIters)
-			DrawIterations(c, c, m_IterationsColor, m_Mandelbrot, m_ResolutionPercentage);
-
-		if (ImGui::IsWindowHovered())
-		{
-			ImVec2 mousePos = WindowPosToImagePos(ImGui::GetMousePos(), m_ResolutionPercentage);
-
-			// Right click to set `julia c`
-			if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) ||
-				(ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0) && (io.MouseDelta.x != 0 || io.MouseDelta.y != 0)))
-			{
-				m_JuliaC = m_Mandelbrot.MapCoordsToPos(mousePos);
-				m_Julia.ResetRender();
-			}
-		}
-
-		ImGui::End();
-		ImGui::PopStyleVar();
-	}
-
-	// Julia
-	{
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
-		m_JuliaMinimized = !ImGui::Begin("Julia");
-
-		// Resize
-		FractalHandleResize(m_Julia, m_ResolutionPercentage);
-
-		// Draw
-		ImGui::GetCurrentWindow()->DrawList->AddCallback(DisableBlendCallback, nullptr);
-		ImGui::Image((ImTextureID)(intptr_t)m_Julia.GetTexture(), ImGui::GetContentRegionAvail(), ImVec2{0, 1}, ImVec2{1, 0});
-		ImGui::GetCurrentWindow()->DrawList->AddCallback(EnableBlendCallback, nullptr);
-
-		// Events
-		FractalHandleInteract(m_Julia, m_ResolutionPercentage);
-		FractalHandleZoom(m_Julia, m_ResolutionPercentage, m_FrameRate, m_SmoothZoom, m_JuliaZoomData);
-
-		static bool showIters = false;
-		static glm::dvec2 z;
-		PersistentMiddleClick(showIters, z, m_Julia, m_ResolutionPercentage);
-
-		if (showIters)
-			DrawIterations(z, m_JuliaC, m_IterationsColor, m_Julia, m_ResolutionPercentage);
-
-		ImGui::End();
-		ImGui::PopStyleVar();
-	}
-
 	// Controls
 	{
 		auto windowBgCol = style.Colors[ImGuiCol_WindowBg];
@@ -954,8 +885,75 @@ void MainLayer::OnImGuiRender()
 			}
 		}
 
+		ImGui::End();
+	}
 
+	// Mandelbrot
+	{
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
+		m_MandelbrotMinimized = !ImGui::Begin("Mandelbrot");
+
+		// Resize
+		FractalHandleResize(m_Mandelbrot, m_ResolutionPercentage);
+
+		// Draw
+		ImGui::GetCurrentWindow()->DrawList->AddCallback(DisableBlendCallback, nullptr);
+		ImGui::Image((ImTextureID)(intptr_t)m_Mandelbrot.GetTexture(), ImGui::GetContentRegionAvail(), ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+		ImGui::GetCurrentWindow()->DrawList->AddCallback(EnableBlendCallback, nullptr);
+
+		// Events
+		FractalHandleInteract(m_Mandelbrot, m_ResolutionPercentage);
+		FractalHandleZoom(m_Mandelbrot, m_ResolutionPercentage, m_FrameRate, m_SmoothZoom, m_MandelbrotZoomData);
+
+		static bool showIters = false;
+		static glm::dvec2 c;
+		PersistentMiddleClick(showIters, c, m_Mandelbrot, m_ResolutionPercentage);
+
+		if (showIters)
+			DrawIterations(c, c, m_IterationsColor, m_Mandelbrot, m_ResolutionPercentage);
+
+		if (ImGui::IsWindowHovered())
+		{
+			ImVec2 mousePos = WindowPosToImagePos(ImGui::GetMousePos(), m_ResolutionPercentage);
+
+			// Right click to set `julia c`
+			if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) ||
+				(ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0) && (io.MouseDelta.x != 0 || io.MouseDelta.y != 0)))
+			{
+				m_JuliaC = m_Mandelbrot.MapCoordsToPos(mousePos);
+				m_Julia.ResetRender();
+			}
+		}
 
 		ImGui::End();
+		ImGui::PopStyleVar();
+	}
+
+	// Julia
+	{
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0, 0 });
+		m_JuliaMinimized = !ImGui::Begin("Julia");
+
+		// Resize
+		FractalHandleResize(m_Julia, m_ResolutionPercentage);
+
+		// Draw
+		ImGui::GetCurrentWindow()->DrawList->AddCallback(DisableBlendCallback, nullptr);
+		ImGui::Image((ImTextureID)(intptr_t)m_Julia.GetTexture(), ImGui::GetContentRegionAvail(), ImVec2{0, 1}, ImVec2{1, 0});
+		ImGui::GetCurrentWindow()->DrawList->AddCallback(EnableBlendCallback, nullptr);
+
+		// Events
+		FractalHandleInteract(m_Julia, m_ResolutionPercentage);
+		FractalHandleZoom(m_Julia, m_ResolutionPercentage, m_FrameRate, m_SmoothZoom, m_JuliaZoomData);
+
+		static bool showIters = false;
+		static glm::dvec2 z;
+		PersistentMiddleClick(showIters, z, m_Julia, m_ResolutionPercentage);
+
+		if (showIters)
+			DrawIterations(z, m_JuliaC, m_IterationsColor, m_Julia, m_ResolutionPercentage);
+
+		ImGui::End();
+		ImGui::PopStyleVar();
 	}
 }

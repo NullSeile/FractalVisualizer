@@ -1,5 +1,4 @@
 project "FractalVisualizer"
-	kind "ConsoleApp"
 	language "C++"
 	cppdialect "C++20"
 	staticruntime "on"
@@ -39,11 +38,13 @@ project "FractalVisualizer"
 		}
 
 	filter "configurations:Debug"
+		kind "ConsoleApp"
 		defines "GLCORE_DEBUG"
 		runtime "Debug"
 		symbols "on"
 
 	filter "configurations:Release"
+		kind "WindowedApp"
 		defines "GLCORE_RELEASE"
 		runtime "Release"
         optimize "on"

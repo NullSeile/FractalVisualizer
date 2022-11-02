@@ -14,7 +14,11 @@ public:
 	}
 };
 
+#if GLCORE_RELEASE && GLCORE_PLATFORM_WINDOWS
+int wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nShowCmd)
+#else
 int main()
+#endif
 {
 	std::unique_ptr<FractalApp> app = std::make_unique<FractalApp>();
 	app->Run();

@@ -73,6 +73,8 @@ private:
 	void ShowControlsWindow();
 	void ShowRenderWindow();
 
+	bool m_VSync = true;
+
 	float m_FrameRate = 0;
 	int m_ResolutionPercentage = 100;
 	int m_ItersPerSteps = 100;

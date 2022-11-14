@@ -21,6 +21,8 @@ MainLayer::MainLayer()
 {
 	RefreshColorFunctions();
 
+	GLCore::Application::Get().GetWindow().SetVSync(m_VSync);
+
 	m_Mandelbrot.SetColorFunction(&m_Colors[m_SelectedColor]);
 	m_Julia.SetColorFunction(&m_Colors[m_SelectedColor]);
 
@@ -133,7 +135,6 @@ void MainLayer::OnUpdate(GLCore::Timestep ts)
 			data.fractal->SetRadius(data.stored_radius);
 		}
 	}
-
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -310,6 +311,9 @@ void MainLayer::ShowControlsWindow()
 		ImGui::SameLine(); HelpMarker("Press the middle mouse button to show the first iterations at that point");
 
 		ImGui::Checkbox("Smooth Zoom", &m_SmoothZoom);
+
+		if (ImGui::Checkbox("VSync", &m_VSync))
+			GLCore::Application::Get().GetWindow().SetVSync(m_VSync);
 
 		ImGui::Spacing();
 	}
@@ -508,9 +512,9 @@ void MainLayer::ShowRenderWindow()
 
 	if (ImGui::CollapsingHeader("Image"))
 	{
-		const char* items[] = { "Mandelbrot", "Julia" };
+		const char* fractal_names[] = { "Mandelbrot", "Julia" };
 		static int fractal_index = 0;
-		ImGui::Combo("Fractal", &fractal_index, items, IM_ARRAYSIZE(items));
+		ImGui::Combo("Fractal", &fractal_index, fractal_names, IM_ARRAYSIZE(fractal_names));
 
 		auto& fract = fractal_index == 0 ? m_Mandelbrot : m_Julia;
 
@@ -529,7 +533,7 @@ void MainLayer::ShowRenderWindow()
 
 		if (ImGui::Button("Render Image"))
 		{
-			std::string fileName = "output.png";
+			std::string fileName = std::format("{}_{:.15f},{:.15f}", fractal_names[fractal_index], center.x, center.y);
 			if (SaveImageDialog(fileName))
 			{
 				fract.SetCenter(center);
@@ -565,9 +569,9 @@ void MainLayer::ShowRenderWindow()
 			ImGui::EndPopup();
 		}
 
-		const char* items[] = { "Mandelbrot", "Julia" };
+		const char* fractal_names[] = { "Mandelbrot", "Julia" };
 		static int fractal_index = 0;
-		ImGui::Combo("Fractal", &fractal_index, items, IM_ARRAYSIZE(items));
+		ImGui::Combo("Fractal", &fractal_index, fractal_names, IM_ARRAYSIZE(fractal_names));
 
 		auto& fract = fractal_index == 0 ? m_Mandelbrot : m_Julia;
 		data.fractal = &fract;
@@ -586,6 +590,7 @@ void MainLayer::ShowRenderWindow()
 
 		if (ImGui::Button("Render Video"))
 		{
+			data.fileName = std::format("{}_{:.15f},{:.15f}", fractal_names[fractal_index], data.final_center.x, data.final_center.y);
 			if (GLCore::Application::Get().GetWindow().SaveFileDialog("mp4 (*.mp4)\0*.mp4\0", data.fileName))
 			{
 				m_ShouldRenderVideo = true;
@@ -626,6 +631,8 @@ void MainLayer::ShowRenderWindow()
 				data.ffmpeg = _popen(cmd.str().c_str(), "wb");
 				data.pixels = new BYTE[width * height * 4];
 				data.current_iter = 0;
+
+				//std::cout << "Please, do not close this window :)";
 
 				ImGui::OpenPopup("Rendering Video");
 			}

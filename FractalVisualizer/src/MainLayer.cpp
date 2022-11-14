@@ -11,6 +11,8 @@
 #include <imgui_internal.h>
 #include "LayerUtils.h"
 
+#include <IconsMaterialDesign.h>
+
 static glm::uvec2 previewSize = { 100, 1 };
 
 MainLayer::MainLayer()
@@ -69,6 +71,14 @@ void MainLayer::OnAttach()
 
 	ImGuiIO& io = ImGui::GetIO();
 	io.ConfigWindowsMoveFromTitleBarOnly = true;
+
+	io.Fonts->AddFontDefault();
+
+	ImFontConfig config;
+	config.MergeMode = true;
+	config.GlyphMinAdvanceX = 13.0f; // Use if you want to make the icon monospaced
+	static const ImWchar icon_ranges[] = { (ImWchar)ICON_MIN_MD, (ImWchar)ICON_MAX_MD, 0 };
+	io.Fonts->AddFontFromFileTTF("assets/fonts/MaterialIcons-Regular.ttf", 13.0f, &config, icon_ranges);
 }
 
 void MainLayer::OnUpdate(GLCore::Timestep ts)

@@ -2,6 +2,7 @@
 
 #include "FractalVisualizer.h"
 #include <imgui_internal.h>
+#include <IconsMaterialDesign.h>
 
 ImVec2 operator+(const ImVec2& l, const ImVec2& r)
 {
@@ -68,6 +69,8 @@ void HelpMarker(const char* desc)
 	}
 }
 
+#define RESET_CHAR ICON_MD_UNDO
+
 bool DragFloatR(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, float v_default = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
 {
 	ImGui::PushID(label);
@@ -82,7 +85,7 @@ bool DragFloatR(const char* label, float* v, float v_speed = 1.0f, float v_min =
 
 	ImGui::SameLine(0, style.ItemInnerSpacing.x);
 
-	if (ImGui::Button("R", ImVec2(button_size, button_size)))
+	if (ImGui::Button(RESET_CHAR, ImVec2(button_size, button_size)))
 	{
 		value_changed = true;
 		*v = v_default;
@@ -109,7 +112,7 @@ bool ColorEdit3R(const char* label, float col[3], glm::vec3 default_col, ImGuiCo
 
 	ImGui::SameLine(0, style.ItemInnerSpacing.x);
 
-	if (ImGui::Button("R", ImVec2(button_size, button_size)))
+	if (ImGui::Button(RESET_CHAR, ImVec2(button_size, button_size)))
 	{
 		value_changed = true;
 		col[0] = default_col.r;
@@ -244,6 +247,7 @@ void PersistentMiddleClick(bool& clicked, glm::dvec2& pos, FractalVisualizer& fr
 {
 	if (ImGui::IsWindowHovered())
 	{
+		//if (ImGui::IsKeyDown(ImGuiKey_Space))
 		if (ImGui::IsMouseDown(ImGuiMouseButton_Middle))
 		{
 			clicked = true;
@@ -251,6 +255,7 @@ void PersistentMiddleClick(bool& clicked, glm::dvec2& pos, FractalVisualizer& fr
 			pos = fract.MapCoordsToPos(mousePos);
 		}
 
+		//if (ImGui::IsKeyReleased(ImGuiKey_Space) && !ImGui::GetIO().KeyCtrl)
 		if (ImGui::IsMouseReleased(ImGuiMouseButton_Middle) && !ImGui::GetIO().KeyCtrl)
 			clicked = false;
 	}

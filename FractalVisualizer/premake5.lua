@@ -8,7 +8,9 @@ project "FractalVisualizer"
 
 	files {
 		"src/**.h",
-		"src/**.cpp"
+		"src/**.cpp",
+		"vendor/**.h",
+		"vendor/**.cpp"
 	}
 
 	includedirs {
@@ -17,7 +19,8 @@ project "FractalVisualizer"
 		"../OpenGL-Core/vendor",
 		"../OpenGL-Core/vendor/glm",
 		"../OpenGL-Core/vendor/Glad/include",
-		"../OpenGL-Core/vendor/imgui"
+		"../OpenGL-Core/vendor/imgui",
+		"vendor"
 	}
 
 	links {

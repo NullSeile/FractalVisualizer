@@ -522,6 +522,8 @@ void MainLayer::ShowRenderWindow()
 
 	if (ImGui::CollapsingHeader("Image"))
 	{
+		ImGui::PushID("Image");
+
 		const char* fractal_names[] = { "Mandelbrot", "Julia" };
 		static int fractal_index = 0;
 		ImGui::Combo("Fractal", &fractal_index, fractal_names, IM_ARRAYSIZE(fractal_names));
@@ -563,10 +565,14 @@ void MainLayer::ShowRenderWindow()
 		}
 
 		ImGui::Spacing();
+
+		ImGui::PopID();
 	}
 
 	if (ImGui::CollapsingHeader("Video"))
 	{
+		ImGui::PushID("Video");
+
 		auto& data = m_VideoRenderData;
 
 		if (ImGui::BeginPopupModal("Rendering Video"))
@@ -647,6 +653,8 @@ void MainLayer::ShowRenderWindow()
 				ImGui::OpenPopup("Rendering Video");
 			}
 		}
+
+		ImGui::PopID();
 	}
 
 	ImGui::End();

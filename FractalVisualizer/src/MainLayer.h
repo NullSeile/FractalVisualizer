@@ -80,6 +80,7 @@ private:
 	int m_ItersPerSteps = 100;
 	int m_StepsPerFrame = 1;
 	int m_MaxEpochs = 100;
+	int m_FadeThreshold = 0;
 	bool m_SmoothColor = true;
 	bool m_SmoothZoom = true;
 

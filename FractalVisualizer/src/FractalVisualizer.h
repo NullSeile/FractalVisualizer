@@ -29,6 +29,9 @@ public:
 	void SetIterationsPerFrame(int iterationsPerFrame);
 	int GetIterationsPerFrame() const { return m_IterationsPerFrame; }
 
+	void SetFadeThreshold(int fadeThreshold);
+	int GetFadeThreshold() const { return m_FadeThreshold; }
+
 	void SetMaxEpochs(int maxEpochs);
 
 	void SetSmoothColor(bool smoothColor);
@@ -63,6 +66,7 @@ private:
 	int m_MaxEpochs = 0;
 	int m_Frame = 0;
 	bool m_SmoothColor = false;
+	int m_FadeThreshold = 0;
 
 	ColorFunction* m_ColorFunction = nullptr;
 

@@ -14,6 +14,7 @@ uniform dvec2 i_yRange;
 uniform uint i_ItersPerFrame;
 uniform uint i_Frame;
 uniform uint i_MaxEpochs;
+uniform uint i_FadeThreshold;
 uniform bool i_SmoothColor;
 
 uniform dvec2 i_JuliaC;
@@ -103,6 +104,10 @@ void main()
 
         vec3 color;
         int n = int(iters) + i;
+
+        if (i_FadeThreshold > 0 && n > i_FadeThreshold)
+            epoch += int(float(n) / float(i_FadeThreshold));
+
         if (i_SmoothColor)
         {
             float log_zn = log(float(z.x*z.x + z.y*z.y)) / 2.0;

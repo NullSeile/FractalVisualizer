@@ -313,6 +313,39 @@ void MainLayer::ShowControlsWindow()
 		}
 		ImGui::EndDisabled();
 
+		static bool fadeEnabled = m_FadeThreshold != 0;
+		static int fadeThreshold = fadeEnabled ? fadeEnabled : 10000;
+		if (ImGui::Checkbox("Enable fade", &fadeEnabled))
+		{
+			if (fadeEnabled)
+				m_FadeThreshold = fadeThreshold;
+			else
+				m_FadeThreshold = 0;
+
+			m_Mandelbrot.SetFadeThreshold(m_FadeThreshold);
+			m_Julia.SetFadeThreshold(m_FadeThreshold);
+		}
+
+		ImGui::SameLine(); HelpMarker("Similar to Anti-Aliasing, this feature should smoothen the edge of the set. The threshold sets the number of iterations needed to start loosing detail.");
+
+		ImGui::BeginDisabled(!fadeEnabled);
+		{
+			ImGui::PushItemWidth(ImGui::CalcItemWidth() - ImGui::GetContentRegionAvail().x);
+			ImGui::Indent();
+
+			if (ImGui::DragInt("Fade Threshold", &fadeThreshold, 1, 1, 100000, "%d", ImGuiSliderFlags_AlwaysClamp))
+			{
+				m_FadeThreshold = fadeThreshold;
+
+				m_Mandelbrot.SetFadeThreshold(m_FadeThreshold);
+				m_Julia.SetFadeThreshold(m_FadeThreshold);
+			}
+
+			ImGui::Unindent();
+			ImGui::PopItemWidth();
+		}
+		ImGui::EndDisabled();
+
 		ImGui::Spacing();
 
 		ImGui::AlignTextToFramePadding();

@@ -2,7 +2,7 @@
 #uniform float offset 0 0.01 -1 1;
 #uniform color c1 0.07 0.14 0.25;
 #uniform color c2 0.72 0.91 0.83;
-#uniform color c3 0.96 0.6 0.35;
+#uniform color c3 0.96 0.67 0.55;
 #uniform bool sine_interp true;
 
 #define PI 3.1415926535

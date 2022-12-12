@@ -796,7 +796,7 @@ void MainLayer::RefreshColorFunctions()
 		// Shader
 		std::stringstream ss;
 		ss << "#version 400\n\n";
-		ss << c.GetSource() << '\n';
+		ss << c->GetSource() << '\n';
 		ss << R"(
 layout (location = 0) out vec3 outColor;
 
@@ -820,7 +820,7 @@ outColor = get_color(i);
 		loc = glGetUniformLocation(shader, "size");
 		glUniform2ui(loc, previewSize.x, previewSize.y);
 
-		c.UpdateUniformsToShader(shader);
+		c->UpdateUniformsToShader(shader);
 
 		// Drawing
 		glViewport(0, 0, previewSize.x, previewSize.y);
@@ -836,6 +836,6 @@ outColor = get_color(i);
 	if (m_SelectedColor >= m_Colors.size())
 		m_SelectedColor = 0;
 
-	m_Mandelbrot.SetColorFunction(&m_Colors[m_SelectedColor]);
-	m_Julia.SetColorFunction(&m_Colors[m_SelectedColor]);
+	m_Mandelbrot.SetColorFunction(m_Colors[m_SelectedColor]);
+	m_Julia.SetColorFunction(m_Colors[m_SelectedColor]);
 }

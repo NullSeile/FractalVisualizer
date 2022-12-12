@@ -86,10 +86,8 @@ public:
 
 	void UpdateUniformsToShader(GLuint shader) const;
 
-	std::vector<Uniform*>& GetUniforms();
+	const std::vector<Uniform*>& GetUniforms() const { return m_uniforms; }
 
-	const std::vector<Uniform*>& GetUniforms() const;
-
-	const std::string& GetName() const;
-	const std::string& GetSource() const;
+	const std::string& GetName() const { return m_name; }
+	const std::string& GetSource() const { return m_src;  }
 };

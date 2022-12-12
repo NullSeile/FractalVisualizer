@@ -24,7 +24,7 @@ public:
 
 	void SetShader(const std::string& shaderSrcPath);
 
-	void SetColorFunction(ColorFunction* const colorFunc);
+	void SetColorFunction(const std::shared_ptr<ColorFunction>& colorFunc);
 
 	void SetIterationsPerFrame(int iterationsPerFrame);
 	int GetIterationsPerFrame() const { return m_IterationsPerFrame; }
@@ -68,7 +68,7 @@ private:
 	bool m_SmoothColor = false;
 	int m_FadeThreshold = 0;
 
-	ColorFunction* m_ColorFunction = nullptr;
+	std::shared_ptr<ColorFunction> m_ColorFunction;
 
 	// Shader
 	std::string m_ShaderSrc;

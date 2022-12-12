@@ -88,7 +88,7 @@ private:
 	VideoRenderData m_VideoRenderData;
 
 	std::vector<ColorPreview> m_ColorsPreview;
-	std::vector<ColorFunction> m_Colors;
+	std::vector<std::shared_ptr<ColorFunction>> m_Colors;
 	size_t m_SelectedColor = 0;
 	ImColor m_IterationsColor = { 1.f, 1.f, 1.f, 0.9f };
 	bool m_ShowHelp = true;

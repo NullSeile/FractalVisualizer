@@ -169,7 +169,7 @@ void FractalVisualizer::SetShader(const std::string& shaderSrcPath)
 	m_ShouldCreateFramebuffer = true;
 }
 
-void FractalVisualizer::SetColorFunction(ColorFunction* const colorFunc)
+void FractalVisualizer::SetColorFunction(const std::shared_ptr<ColorFunction>& colorFunc)
 {
 	m_ColorFunction = colorFunc;
 

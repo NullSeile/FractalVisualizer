@@ -25,8 +25,8 @@ MainLayer::MainLayer()
 
 	GLCore::Application::Get().GetWindow().SetVSync(m_VSync);
 
-	m_Mandelbrot.SetColorFunction(&m_Colors[m_SelectedColor]);
-	m_Julia.SetColorFunction(&m_Colors[m_SelectedColor]);
+	m_Mandelbrot.SetColorFunction(m_Colors[m_SelectedColor]);
+	m_Julia.SetColorFunction(m_Colors[m_SelectedColor]);
 
 	m_Mandelbrot.SetIterationsPerFrame(m_ItersPerSteps);
 	m_Julia.SetIterationsPerFrame(m_ItersPerSteps);
@@ -388,11 +388,11 @@ void MainLayer::ShowControlsWindow()
 			if (ImGui::ImageButton((ImTextureID)(intptr_t)m_ColorsPreview[i].textureID, button_size))
 			{
 				m_SelectedColor = i;
-				m_Mandelbrot.SetColorFunction(&m_Colors[m_SelectedColor]);
-				m_Julia.SetColorFunction(&m_Colors[m_SelectedColor]);
+				m_Mandelbrot.SetColorFunction(m_Colors[m_SelectedColor]);
+				m_Julia.SetColorFunction(m_Colors[m_SelectedColor]);
 			}
 			if (ImGui::IsItemHovered() && GImGui->HoveredIdTimer > 0.5f)
-				ImGui::SetTooltip(m_Colors[i].GetName().c_str());
+				ImGui::SetTooltip(m_Colors[i]->GetName().c_str());
 
 			ImGui::PopStyleColor();
 
@@ -409,7 +409,7 @@ void MainLayer::ShowControlsWindow()
 
 		ImGui::Spacing();
 		ImGui::Text("Color function parameters");
-		for (Uniform* uniform : m_Colors[m_SelectedColor].GetUniforms())
+		for (Uniform* uniform : m_Colors[m_SelectedColor]->GetUniforms())
 		{
 			bool modified = false;
 
@@ -763,7 +763,7 @@ void MainLayer::RefreshColorFunctions()
 	for (const auto& path : std::filesystem::directory_iterator("assets/colors"))
 	{
 		std::ifstream colorSrc(path.path());
-		m_Colors.emplace_back(std::string((std::istreambuf_iterator<char>(colorSrc)), std::istreambuf_iterator<char>()), path.path().filename().replace_extension().string());
+		m_Colors.emplace_back(std::make_shared<ColorFunction>(std::string((std::istreambuf_iterator<char>(colorSrc)), std::istreambuf_iterator<char>()), path.path().filename().replace_extension().string()));
 	}
 
 	// Framebuffer

@@ -83,23 +83,3 @@ void ColorFunction::UpdateUniformsToShader(GLuint shader) const
 	for (auto uniform : m_uniforms)
 		uniform->UpdateToShader(shader);
 }
-
-std::vector<Uniform*>& ColorFunction::GetUniforms()
-{
-	return m_uniforms;
-}
-
-const std::vector<Uniform*>& ColorFunction::GetUniforms() const
-{
-	return m_uniforms;
-}
-
-const std::string& ColorFunction::GetName() const
-{
-	return m_name;
-}
-
-const std::string& ColorFunction::GetSource() const
-{
-	return m_src;
-}

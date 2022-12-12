@@ -1,12 +1,16 @@
 #uniform float colorMult 100 1 1 NULL false;
 #uniform float offset 0 0.01 -1 1;
-#uniform color c1 0.07 0.14 0.25;
-#uniform color c2 0.72 0.91 0.83;
-#uniform color c3 0.92 0.58 0.44;
+#uniform color c1 0.38 0.22 0.02;
+#uniform color c2 0.84 0.39 0.00;
+#uniform color c3 1.00 0.87 0.39;
+#uniform color c4 1.00 0.90 0.72;
+#uniform color c5 1.00 1.00 1.00;
+#uniform color c6 0.33 0.33 0.33;
+#uniform color c7 0.00 0.00 0.00;
 #uniform bool sine_interp true;
 
 #define PI 3.1415926535
-vec3 colors[] = vec3[](c1, c2, c3, c1);
+vec3 colors[] = vec3[](c1, c2, c3, c4, c5, c6, c7, c1);
 vec3 get_color(float iters)
 {
 	float x = (iters / colorMult + offset) * (colors.length() - 1);

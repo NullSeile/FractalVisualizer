@@ -578,7 +578,8 @@ void MainLayer::ShowRenderWindow()
 
 		if (ImGui::Button("Render Image"))
 		{
-			std::string fileName = std::format("{}_{:.15f},{:.15f}", fractal_names[fractal_index], center.x, center.y);
+			glm::dvec2 display_pos = fractal_index == 0 ? center : m_JuliaC;
+			std::string fileName = std::format("{}_{:.15f},{:.15f}", fractal_names[fractal_index], display_pos.x, display_pos.y);
 			if (SaveImageDialog(fileName))
 			{
 				fract.SetCenter(center);

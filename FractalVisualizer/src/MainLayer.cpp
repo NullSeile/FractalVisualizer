@@ -361,7 +361,7 @@ void MainLayer::ShowControlsWindow()
 		ImGui::Spacing();
 	}
 
-	if (ImGui::CollapsingHeader("Color function"))
+	if (ImGui::CollapsingHeader("Color function", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		if (ImGui::Checkbox("Smooth Color", &m_SmoothColor))
 		{

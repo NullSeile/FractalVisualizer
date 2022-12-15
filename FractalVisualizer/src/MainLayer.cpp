@@ -114,6 +114,24 @@ void MainLayer::OnUpdate(GLCore::Timestep ts)
 
 		if (i < data.steps)
 		{
+			const double t = i / (double)data.steps;
+
+			// Radius
+			const double new_radius = data.initial_radius * std::pow(data.delta, sine_interp(t) * data.steps);
+			data.fractal->SetRadius(new_radius);
+
+			// Center
+			const glm::dvec2 target_pos = data.fractal->MapCoordsToPos(data.initial_coords * (1.f - (float)t) + data.final_coords * (float)t);
+			const glm::dvec2 delta = target_pos - data.final_center;
+			data.fractal->SetCenter(data.fractal->GetCenter() - delta);
+
+			// Uniforms
+			for (const auto& [u, vals] : data.uniforms)
+			{
+				const float new_val = lerp(vals.x, vals.y, (float)sine_interp(t));
+				u->val = new_val;
+			}
+
 			for (int f = 0; f < data.steps_per_frame; f++)
 				data.fractal->Update();
 
@@ -121,16 +139,6 @@ void MainLayer::OnUpdate(GLCore::Timestep ts)
 			glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.pixels);
 
 			fwrite(data.pixels, data.resolution.x * data.resolution.y * 4 * sizeof(BYTE), 1, data.ffmpeg);
-
-			const double t = (i + 1) / (double)data.steps;
-
-			const double new_radius = data.initial_radius * std::pow(data.delta, sine_interp(t) * data.steps);
-			data.fractal->SetRadius(new_radius);
-
-			const glm::dvec2 target_pos = data.fractal->MapCoordsToPos(data.initial_coords * (1.f - (float)t) + data.final_coords * (float)t);
-
-			const glm::dvec2 delta = target_pos - data.final_center;
-			data.fractal->SetCenter(data.fractal->GetCenter() - delta);
 
 			i++;
 		}
@@ -417,7 +425,7 @@ void MainLayer::ShowControlsWindow()
 			{
 			case UniformType::FLOAT: {
 				auto u = dynamic_cast<FloatUniform*>(uniform);
-				modified = DragFloatR(u->name.c_str(), &u->val, u->speed, u->range.x, u->range.y, u->default_val);
+				modified = DragFloatR(u->name.c_str(), &u->val, u->default_val, u->speed, u->range.x, u->range.y);
 				break;
 			}
 			case UniformType::COLOR: {
@@ -638,6 +646,32 @@ void MainLayer::ShowRenderWindow()
 
 		PositionPicker("Final position", glm::value_ptr(data.final_center), &data.final_radius, fract);
 
+		bool open = ImGui::TreeNode("Uniforms");
+		if (open)
+		{
+			if (data.colorFunction != m_Colors[m_SelectedColor].get())
+			{
+				auto color = m_Colors[m_SelectedColor].get();
+				data.colorFunction = color;
+
+				data.uniforms.clear();
+
+				for (Uniform* uniform : color->GetUniforms())
+				{
+					if (uniform->type == UniformType::FLOAT)
+					{
+						auto ptr = dynamic_cast<FloatUniform*>(uniform);
+						data.uniforms.emplace_back(ptr, ptr->val);
+					}
+				}
+			}
+
+			for (auto& [u, vals] : data.uniforms)
+				DragFloat2R(u->name.c_str(), glm::value_ptr(vals), glm::vec2(u->val), u->speed);
+
+			ImGui::TreePop();
+		}
+
 		if (ImGui::Button("Render Video"))
 		{
 			data.fileName = std::format("{}_{:.15f},{:.15f}", fractal_names[fractal_index], data.final_center.x, data.final_center.y);
@@ -801,13 +835,13 @@ void MainLayer::RefreshColorFunctions()
 		ss << R"(
 layout (location = 0) out vec3 outColor;
 
-uniform uint range;
-uniform uvec2 size;
+uniform uint i_Range;
+uniform uvec2 i_Size;
 
 void main()
 {
-int i = int((gl_FragCoord.x / size.x) * range);
-outColor = get_color(i);
+	int i = int((gl_FragCoord.x / i_Size.x) * i_Range);
+	outColor = get_color(i);
 }
 	)";
 
@@ -815,10 +849,10 @@ outColor = get_color(i);
 		glUseProgram(shader);
 		GLint loc;
 
-		loc = glGetUniformLocation(shader, "range");
+		loc = glGetUniformLocation(shader, "i_Range");
 		glUniform1ui(loc, 100);
 
-		loc = glGetUniformLocation(shader, "size");
+		loc = glGetUniformLocation(shader, "i_Size");
 		glUniform2ui(loc, previewSize.x, previewSize.y);
 
 		c->UpdateUniformsToShader(shader);

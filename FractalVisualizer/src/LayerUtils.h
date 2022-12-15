@@ -43,9 +43,16 @@ ImVec2 GlmToImVec(const glm::vec<2, T>& vec)
 	return { (float)vec.x, (float)vec.y };
 }
 
-double sine_interp(const double& x)
+template<typename T>
+T sine_interp(const T& x)
 {
 	return -cos(M_PI * x) * 0.5 + 0.5;
+}
+
+template<typename T>
+T lerp(T a, T b, T t)
+{
+	return b * t + a * ((T)1 - t);
 }
 
 static bool SaveImageDialog(std::string& fileName)
@@ -71,7 +78,7 @@ void HelpMarker(const char* desc)
 
 #define RESET_CHAR ICON_MD_UNDO
 
-bool DragFloatR(const char* label, float* v, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, float v_default = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
+bool DragFloatR(const char* label, float* v, float v_default, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
 {
 	ImGui::PushID(label);
 
@@ -89,6 +96,34 @@ bool DragFloatR(const char* label, float* v, float v_speed = 1.0f, float v_min =
 	{
 		value_changed = true;
 		*v = v_default;
+	}
+	ImGui::SameLine(0, style.ItemInnerSpacing.x);
+	ImGui::Text(label);
+
+	ImGui::PopID();
+
+	return value_changed;
+}
+
+bool DragFloat2R(const char* label, float v[2], glm::vec2 v_default, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
+{
+	ImGui::PushID(label);
+
+	ImGuiStyle style = ImGui::GetStyle();
+
+	bool value_changed = false;
+	const float button_size = ImGui::GetFrameHeight();
+
+	ImGui::SetNextItemWidth(std::max(1.0f, ImGui::CalcItemWidth() - (button_size + style.ItemInnerSpacing.x)));
+	value_changed |= ImGui::DragFloat2("", v, v_speed, v_min, v_max, format, flags);
+
+	ImGui::SameLine(0, style.ItemInnerSpacing.x);
+
+	if (ImGui::Button(RESET_CHAR, ImVec2(button_size, button_size)))
+	{
+		value_changed = true;
+		v[0] = v_default.x;
+		v[1] = v_default.y;
 	}
 	ImGui::SameLine(0, style.ItemInnerSpacing.x);
 	ImGui::Text(label);

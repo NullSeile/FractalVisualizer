@@ -14,6 +14,8 @@ struct SmoothZoomData
 	ImVec2 target_pos;
 };
 
+typedef std::tuple<FloatUniform*, glm::vec2> UniformRenderData;
+
 struct VideoRenderData
 {
 	std::string fileName = "output.mp4";
@@ -38,6 +40,9 @@ struct VideoRenderData
 	ImVec2 final_coords;
 
 	int current_iter = 0;
+	
+	ColorFunction* colorFunction; // Used to check if it has changed
+	std::vector<UniformRenderData> uniforms;
 
 	glm::dvec2 stored_center;
 	double stored_radius;

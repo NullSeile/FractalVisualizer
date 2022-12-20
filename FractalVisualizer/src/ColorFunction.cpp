@@ -72,6 +72,40 @@ ColorFunction::ColorFunction(const std::string& src, const std::string& name)
 	}
 }
 
+ColorFunction::ColorFunction(const ColorFunction& other)
+	: m_name(other.m_name), m_src(other.m_src)
+{
+	m_uniforms.reserve(other.m_uniforms.size());
+	for (auto u : other.m_uniforms)
+	{
+		Uniform* uniform = nullptr;
+		switch (u->type)
+		{
+		case UniformType::FLOAT:
+		{
+			auto p = dynamic_cast<FloatUniform*>(u);
+			uniform = new FloatUniform(*p);
+			break;
+		}
+		case UniformType::COLOR:
+		{
+			auto p = dynamic_cast<ColorUniform*>(u);
+			uniform = new ColorUniform(*p);
+			break;
+		}
+		case UniformType::BOOL:
+		{
+			auto p = dynamic_cast<BoolUniform*>(u);
+			uniform = new BoolUniform(*p);
+			break;
+		}
+		default:
+			break;
+		}
+		m_uniforms.push_back(uniform);
+	}
+}
+
 ColorFunction::~ColorFunction()
 {
 	for (auto u : m_uniforms)

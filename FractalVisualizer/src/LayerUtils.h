@@ -49,10 +49,16 @@ T sine_interp(const T& x)
 	return -cos(M_PI * x) * 0.5 + 0.5;
 }
 
-template<typename T>
-T lerp(T a, T b, T t)
+template<typename T, typename S>
+T lerp(T a, T b, S t)
 {
-	return b * t + a * ((T)1 - t);
+	return b * t + a * (S(1) - t);
+}
+
+template<typename T, typename S>
+T mult_interp(T a, T b, S t)
+{
+	return a * std::pow(b / a, t);
 }
 
 static bool SaveImageDialog(std::string& fileName)
@@ -162,6 +168,33 @@ bool ColorEdit3R(const char* label, float col[3], glm::vec3 default_col, ImGuiCo
 	return value_changed;
 }
 
+bool ComboR(const char* label, int* current_item, int default_item, const char* const items[], int items_count, int popup_max_height_in_items = -1)
+{
+	ImGui::PushID(label);
+
+	ImGuiStyle style = ImGui::GetStyle();
+
+	bool value_changed = false;
+	const float button_size = ImGui::GetFrameHeight();
+
+	ImGui::SetNextItemWidth(std::max(1.0f, ImGui::CalcItemWidth() - (button_size + style.ItemInnerSpacing.x)));
+	value_changed |= ImGui::Combo("", current_item, items, items_count, popup_max_height_in_items);
+
+	ImGui::SameLine(0, style.ItemInnerSpacing.x);
+
+	if (ImGui::Button(RESET_CHAR, ImVec2(button_size, button_size)))
+	{
+		value_changed = true;
+		*current_item = default_item;
+	}
+	ImGui::SameLine(0, style.ItemInnerSpacing.x);
+	ImGui::Text(label);
+
+	ImGui::PopID();
+
+	return value_changed;
+}
+
 void DisableBlendCallback(const ImDrawList* parent_list, const ImDrawCmd* cmd)
 {
 	glDisable(GL_BLEND);
@@ -182,16 +215,19 @@ ImVec2 WindowPosToImagePos(const ImVec2& windowPos, int resolutionPercentage)
 	return (windowPos - ImGui::GetWindowPos() - ImGui::GetWindowContentRegionMin()) * (resolutionPercentage / 100.f);
 }
 
+glm::dvec2 ZoomToScreenPos(const glm::uvec2& resolution, double initial_radius, const glm::dvec2& initial_center, ImVec2 zoom_coords, double new_radius)
+{
+	glm::dvec2 initial_pos = MapCoordsToPos(resolution, initial_radius, initial_center, zoom_coords);
+	glm::dvec2 final_pos = MapCoordsToPos(resolution, new_radius, initial_center, zoom_coords);
+	glm::dvec2 delta = final_pos - initial_pos;
+	return initial_center - delta;
+}
+
 void ZoomToScreenPos(FractalVisualizer& fract, ImVec2 pos, double radius)
 {
-	glm::dvec2 iMousePos = fract.MapCoordsToPos(pos);
-
+	auto new_center = ZoomToScreenPos(fract.GetSize(), fract.GetRadius(), fract.GetCenter(), pos, radius);
+	fract.SetCenter(new_center);
 	fract.SetRadius(radius);
-
-	glm::dvec2 fMousePos = fract.MapCoordsToPos(pos);
-
-	glm::dvec2 delta = fMousePos - iMousePos;
-	fract.SetCenter(fract.GetCenter() - delta);
 }
 
 void FractalHandleInteract(FractalVisualizer& fract, int resolutionPercentage)

@@ -28,6 +28,8 @@ MainLayer::MainLayer()
 	m_Mandelbrot.SetColorFunction(m_Colors[m_SelectedColor]);
 	m_Julia.SetColorFunction(m_Colors[m_SelectedColor]);
 
+	m_VideoRenderData.SetColorFunction(m_Colors[m_SelectedColor]);
+
 	m_Mandelbrot.SetIterationsPerFrame(m_ItersPerSteps);
 	m_Julia.SetIterationsPerFrame(m_ItersPerSteps);
 
@@ -91,7 +93,9 @@ void MainLayer::OnUpdate(GLCore::Timestep ts)
 		m_ShouldRefreshColors = false;
 	}
 
-	if (!m_ShouldRenderVideo)
+	switch (m_State)
+	{
+	case State::Exploring:
 	{
 		glUseProgram(m_Julia.GetShader());
 		GLint loc = glGetUniformLocation(m_Julia.GetShader(), "i_JuliaC");
@@ -105,37 +109,18 @@ void MainLayer::OnUpdate(GLCore::Timestep ts)
 			if (!m_JuliaMinimized)
 				m_Julia.Update();
 		}
+		break;
 	}
-	
-	if (m_ShouldRenderVideo)
+	case State::Rendering:
 	{
 		auto& data = m_VideoRenderData;
 		auto& i = data.current_iter;
 
 		if (i < data.steps)
 		{
-			const double t = i / (double)data.steps;
+			data.UpdateIter(i / (float)data.steps);
 
-			// Radius
-			const double new_radius = data.initial_radius * std::pow(data.delta, sine_interp(t) * data.steps);
-			data.fractal->SetRadius(new_radius);
-
-			// Center
-			const glm::dvec2 target_pos = data.fractal->MapCoordsToPos(data.initial_coords * (1.f - (float)t) + data.final_coords * (float)t);
-			const glm::dvec2 delta = target_pos - data.final_center;
-			data.fractal->SetCenter(data.fractal->GetCenter() - delta);
-
-			// Uniforms
-			for (const auto& [u, vals] : data.uniforms)
-			{
-				const float new_val = lerp(vals.x, vals.y, (float)sine_interp(t));
-				u->val = new_val;
-			}
-
-			for (int f = 0; f < data.steps_per_frame; f++)
-				data.fractal->Update();
-
-			glBindTexture(GL_TEXTURE_2D, data.fractal->GetTexture());
+			glBindTexture(GL_TEXTURE_2D, data.fract->GetTexture());
 			glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.pixels);
 
 			fwrite(data.pixels, data.resolution.x * data.resolution.y * 4 * sizeof(BYTE), 1, data.ffmpeg);
@@ -144,14 +129,25 @@ void MainLayer::OnUpdate(GLCore::Timestep ts)
 		}
 		else // finished
 		{
-			m_ShouldRenderVideo = false;
+			m_State = State::Exploring;
 
 			_pclose(data.ffmpeg);
 			delete[] data.pixels;
-
-			data.fractal->SetCenter(data.stored_center);
-			data.fractal->SetRadius(data.stored_radius);
 		}
+
+		break;
+	}
+	case State::Previewing:
+	{
+		if (m_ShouldUpdatePreview)
+		{
+			m_VideoRenderData.UpdateIter(m_PreviewT);
+			m_ShouldUpdatePreview = false;
+		}
+		break;
+	}
+	default:
+		break;
 	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -164,7 +160,11 @@ void MainLayer::OnImGuiRender()
 {
 	ImGui::DockSpaceOverViewport();
 
-	//ImGui::ShowDemoWindow();
+	if (ImGui::IsKeyPressed(ImGuiKey_D))
+		m_ShowDemo = !m_ShowDemo;
+
+	if (m_ShowDemo)
+		ImGui::ShowDemoWindow(&m_ShowDemo);
 
 	if (ImGui::IsKeyPressed(ImGuiKey_H))
 		m_ShowHelp = !m_ShowHelp;
@@ -187,8 +187,7 @@ void MainLayer::ShowMandelbrotWindow()
 	m_MandelbrotMinimized = !ImGui::Begin("Mandelbrot");
 
 	// Resize
-	if (!m_ShouldRenderVideo)
-		FractalHandleResize(m_Mandelbrot, m_ResolutionPercentage);
+	FractalHandleResize(m_Mandelbrot, m_ResolutionPercentage);
 
 	// Draw
 	ImGui::GetCurrentWindow()->DrawList->AddCallback(DisableBlendCallback, nullptr);
@@ -229,8 +228,7 @@ void MainLayer::ShowJuliaWindow()
 	m_JuliaMinimized = !ImGui::Begin("Julia");
 
 	// Resize
-	if (!m_ShouldRenderVideo)
-		FractalHandleResize(m_Julia, m_ResolutionPercentage);
+	FractalHandleResize(m_Julia, m_ResolutionPercentage);
 
 	// Draw
 	ImGui::GetCurrentWindow()->DrawList->AddCallback(DisableBlendCallback, nullptr);
@@ -617,11 +615,12 @@ void MainLayer::ShowRenderWindow()
 
 		auto& data = m_VideoRenderData;
 
+		//bool rendering_video = m_State == State::Rendering;
 		if (ImGui::BeginPopupModal("Rendering Video"))
 		{
 			ImGui::ProgressBar(data.current_iter / (float)data.steps, { 200, 0 });
 
-			if (!m_ShouldRenderVideo)
+			if (m_State != State::Rendering)
 				ImGui::CloseCurrentPopup();
 
 			ImGui::EndPopup();
@@ -630,9 +629,7 @@ void MainLayer::ShowRenderWindow()
 		const char* fractal_names[] = { "Mandelbrot", "Julia" };
 		static int fractal_index = 0;
 		ImGui::Combo("Fractal", &fractal_index, fractal_names, IM_ARRAYSIZE(fractal_names));
-
 		auto& fract = fractal_index == 0 ? m_Mandelbrot : m_Julia;
-		data.fractal = &fract;
 
 		ImGui::InputInt2("Resolution", glm::value_ptr(data.resolution));
 
@@ -642,58 +639,103 @@ void MainLayer::ShowRenderWindow()
 
 		ImGui::DragInt("Steps per frame", &data.steps_per_frame, 1, 100);
 
-		PositionPicker("Initial position", glm::value_ptr(data.initial_center), &data.initial_radius, fract);
-
-		PositionPicker("Final position", glm::value_ptr(data.final_center), &data.final_radius, fract);
-
-		bool open = ImGui::TreeNode("Uniforms");
-		if (open)
+		static int color_index = (int)m_SelectedColor;
+		if (ComboR("Color Function", &color_index, (int)m_SelectedColor, m_ColorsName.data(), (int)m_ColorsName.size()))
+			data.SetColorFunction(m_Colors[color_index]);
+			
+		if (ImGui::TreeNode("Animation"))
 		{
-			if (data.colorFunction != m_Colors[m_SelectedColor].get())
+			const float button_size = ImGui::GetFrameHeight();
+			if (ImGui::Button("-", ImVec2(button_size, button_size)))
+				if (data.keyFrames.size() > 2)
+					data.keyFrames.pop_back();
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("+", ImVec2(button_size, button_size)))
+				data.keyFrames.emplace_back();
+
+			for (int i = 0; i < data.keyFrames.size(); i++)
 			{
-				auto color = m_Colors[m_SelectedColor].get();
-				data.colorFunction = color;
-
-				data.uniforms.clear();
-
-				for (Uniform* uniform : color->GetUniforms())
-				{
-					if (uniform->type == UniformType::FLOAT)
-					{
-						auto ptr = dynamic_cast<FloatUniform*>(uniform);
-						data.uniforms.emplace_back(ptr, ptr->val);
-					}
-				}
+				auto& keyFrame = data.keyFrames[i];
+				PositionPicker(std::to_string(i).c_str(), glm::value_ptr(keyFrame.center), &keyFrame.radius, fract);
 			}
-
-			for (auto& [u, vals] : data.uniforms)
-				DragFloat2R(u->name.c_str(), glm::value_ptr(vals), glm::vec2(u->val), u->speed);
 
 			ImGui::TreePop();
 		}
 
+		//PositionPicker("Initial position", glm::value_ptr(data.initial_center), &data.initial_radius, fract);
+
+		//PositionPicker("Final position", glm::value_ptr(data.final_center), &data.final_radius, fract);
+
+		//if (ImGui::TreeNode("Uniforms"))
+		//{
+			//if (data.colorFunction != m_Colors[m_SelectedColor].get())
+			//{
+			//	data.color = std::make_shared<ColorFunction>(*fract.GetColorFunction());
+
+			//	auto color = m_Colors[m_SelectedColor].get();
+			//	data.colorFunction = color;
+
+			//	data.uniforms.clear();
+
+			//	for (Uniform* uniform : data.color->GetUniforms())
+			//	{
+			//		if (uniform->type == UniformType::FLOAT)
+			//		{
+			//			auto ptr = dynamic_cast<FloatUniform*>(uniform);
+			//			data.uniforms.emplace_back(ptr, ptr->val);
+			//		}
+			//	}
+			//}
+
+			//for (auto& [u, vals] : data.uniforms)
+			//	DragFloat2R(u->name.c_str(), glm::value_ptr(vals), glm::vec2(u->val), u->speed);
+
+		//	ImGui::TreePop();
+		//}
+
+		bool render_preview_open = (m_State == State::Previewing);
+		if (ImGui::BeginPopupModal("Render Preview", &render_preview_open))
+		{
+			ImGui::GetCurrentWindow()->DrawList->AddCallback(DisableBlendCallback, nullptr);
+			ImGui::Image((ImTextureID)(intptr_t)data.fract->GetTexture(), ImGui::GetContentRegionAvail(), ImVec2{ 0, 1 }, ImVec2{ 1, 0 });
+			ImGui::GetCurrentWindow()->DrawList->AddCallback(EnableBlendCallback, nullptr);
+
+			if (ImGui::SliderFloat("##preview_percent", &m_PreviewT, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+				m_ShouldUpdatePreview = true;
+
+			ImGui::EndPopup();
+		}
+		if (!render_preview_open && m_State == State::Previewing) // If the close button is pressed
+			m_State = State::Exploring;
+
+		if (ImGui::Button("Preview"))
+		{
+			m_State = State::Previewing;
+
+			const auto& path = fractal_index == 0 ? m_MandelbrotSrcPath : m_JuliaSrcPath;
+			data.Prepare(path, fract);
+
+			m_ShouldUpdatePreview = true;
+
+			ImGui::OpenPopup("Render Preview");
+		}
+
+		ImGui::SameLine();
 		if (ImGui::Button("Render Video"))
 		{
-			data.fileName = std::format("{}_{:.15f},{:.15f}", fractal_names[fractal_index], data.final_center.x, data.final_center.y);
+			data.fileName = std::format("{}_{:.15f},{:.15f}", fractal_names[fractal_index], data.keyFrames.back().center.x, data.keyFrames.back().center.y);
 			if (GLCore::Application::Get().GetWindow().SaveFileDialog("mp4 (*.mp4)\0*.mp4\0", data.fileName))
 			{
-				m_ShouldRenderVideo = true;
+				m_State = State::Rendering;
 
-				data.stored_center = fract.GetCenter();
-				data.stored_radius = fract.GetRadius();
+				const auto& path = fractal_index == 0 ? m_MandelbrotSrcPath : m_JuliaSrcPath;
 
-				fract.SetCenter(data.initial_center);
-				fract.SetRadius(data.initial_radius);
-				fract.SetSize(data.resolution);
+				data.Prepare(path, fract);
 
-				const size_t width = data.resolution.x;
-				const size_t height = data.resolution.y;
-
-				data.steps = (size_t)std::ceil(data.fps * data.duration);
-				data.delta = std::pow(data.final_radius / data.initial_radius, 1.0 / data.steps);
-
-				data.initial_coords = fract.MapPosToCoords(data.final_center);
-				data.final_coords = ImVec2{ (float)width, (float)height } / 2.0;
+				auto width = data.resolution.x;
+				auto height = data.resolution.y;
 
 				std::stringstream cmd;
 				cmd << "ffmpeg ";
@@ -714,7 +756,6 @@ void MainLayer::ShowRenderWindow()
 
 				data.ffmpeg = _popen(cmd.str().c_str(), "wb");
 				data.pixels = new BYTE[width * height * 4];
-				data.current_iter = 0;
 
 				//std::cout << "Please, do not close this window :)";
 
@@ -740,28 +781,28 @@ void MainLayer::ShowHelpWindow()
 	ImGui::BulletText("CTRL + left click to set the center to the mouse location.");
 	ImGui::BulletText("Middle mouse button to show the first iterations of the equation.");
 	ImGui::BulletText("Hold CTRL while releasing the middle mouse button to continuously show the\n"
-		              "iterations.");
+		"iterations.");
 
 	ImGui::Spacing();
 
 	ImGui::Text("FEATURES:");
 	ImGui::BulletText("All panels (including this one) can be moved and docked wherever you want.");
 	ImGui::BulletText("You can edit (or add) the color functions by editing (or adding) the .glsl\n"
-		              "shader flies in the `./assets/colors` folder. In this files use the\n"
-		              "preprocessor command `#uniform` to set a custom uniform which will be exposed\n"
-		              "through the UI, under color function parameters. There are the following types\n"
-		              "of uniforms:");
+		"shader flies in the `./assets/colors` folder. In this files use the\n"
+		"preprocessor command `#uniform` to set a custom uniform which will be exposed\n"
+		"through the UI, under color function parameters. There are the following types\n"
+		"of uniforms:");
 	ImGui::Indent();
 	{
 		ImGui::BulletText("`#uniform float <name> <default_value> <slider_increment> <min> <max>;`.\n"
-			              "Either min or max can be set to `NULL` to indicate it is unbounded.");
+			"Either min or max can be set to `NULL` to indicate it is unbounded.");
 		ImGui::BulletText("`#uniform bool <name> <default_value>;`. The default value must be either `true`\n"
-			              "or `false`.");
+			"or `false`.");
 		ImGui::BulletText("`#uniform color <default_red> <default_green> <default_blue>;`. The RGB values\n"
-			              "must be between 0 and 1.");
+			"must be between 0 and 1.");
 
 		ImGui::Text("All uniform types accept an optional boolean parameter at the end (defaults to\n"
-			        "`true`) which indicates whether this parameter should update the preview image.");
+			"`true`) which indicates whether this parameter should update the preview image.");
 	}
 	ImGui::Unindent();
 
@@ -769,14 +810,14 @@ void MainLayer::ShowHelpWindow()
 
 	ImGui::Text("TIPS:");
 	ImGui::BulletText("If the images are too noisy, try increasing the colorMult parameter in the\n"
-		              "color function section of the controls panel.");
+		"color function section of the controls panel.");
 	ImGui::BulletText("If the first iteration contains too much black parts and you can not\n"
-		              "confortably pan the image, try increasing the number of iterations per\n"
-		              "frame. It may reduce the framerate but it would increase the quality of the\n"
-		              "first frame.");
+		"confortably pan the image, try increasing the number of iterations per\n"
+		"frame. It may reduce the framerate but it would increase the quality of the\n"
+		"first frame.");
 	ImGui::BulletText("If the image ends up being too blurry after a while of rendering, try\n"
-					  "limiting the maximum number of epochs. This option is located in the general\n"
-					  "section of the controls panel.");
+		"limiting the maximum number of epochs. This option is located in the general\n"
+		"section of the controls panel.");
 
 	ImGui::End();
 }
@@ -800,6 +841,10 @@ void MainLayer::RefreshColorFunctions()
 		std::ifstream colorSrc(path.path());
 		m_Colors.emplace_back(std::make_shared<ColorFunction>(std::string((std::istreambuf_iterator<char>(colorSrc)), std::istreambuf_iterator<char>()), path.path().filename().replace_extension().string()));
 	}
+
+	m_ColorsName.reserve(m_Colors.size());
+	for (const auto& c : m_Colors)
+		m_ColorsName.push_back(c->GetName().c_str());
 
 	// Framebuffer
 	GLuint fb;
@@ -873,4 +918,81 @@ void main()
 
 	m_Mandelbrot.SetColorFunction(m_Colors[m_SelectedColor]);
 	m_Julia.SetColorFunction(m_Colors[m_SelectedColor]);
+}
+
+void VideoRenderData::Prepare(const std::string& path, const FractalVisualizer& other)
+{
+	fract = std::make_unique<FractalVisualizer>(path);
+	fract->SetColorFunction(color);
+	fract->SetSmoothColor(other.GetSmoothColor());
+	fract->SetFadeThreshold(other.GetFadeThreshold());
+	fract->SetIterationsPerFrame(other.GetIterationsPerFrame());
+
+	//fract->SetCenter(initial_center);
+	//fract->SetRadius(initial_radius);
+	fract->SetSize(resolution);
+
+	const size_t width = resolution.x;
+	const size_t height = resolution.y;
+
+	steps = (size_t)std::ceil(fps * duration);
+	//delta = std::pow(final_radius / initial_radius, 1.0 / steps);
+
+	//initial_coords = fract->MapPosToCoords(final_center);
+	//final_coords = ImVec2{ (float)width / 2.f, (float)height / 2.f };
+
+	current_iter = 0;
+}
+
+void VideoRenderData::UpdateIter(float t)
+{
+	const float x = t * (keyFrames.size() - 1);
+	const int i = (int)std::floor(x);
+
+	glm::dvec2 new_center = { 0, 0 };
+	double new_radius = 1.0;
+
+	if (x == i)
+	{
+		new_radius = keyFrames[i].radius;
+		new_center = keyFrames[i].center;
+	}
+	else
+	{
+		const double lt = std::fmod(x, 1.f);
+
+		const auto& start = keyFrames[i];
+		const auto& end = keyFrames[i + 1];
+		new_radius = mult_interp(start.radius, end.radius, lt);
+
+		// Coords of end.center should lerp to the center of the screen
+		const auto initial_coords = MapPosToCoords(resolution, start.radius, start.center, end.center); // Screen coordinates of end.center at t=0
+		const auto final_coords = ImVec2{ (float)resolution.x / 2.f, (float)resolution.y / 2.f };
+		const auto target_coords = lerp(initial_coords, final_coords, (float)lt); // Coordinates end.center should be at the current t
+
+		// Move the center to set the coords of end.center to be target_coords
+		const auto target_pos = MapCoordsToPos(resolution, new_radius, start.center, target_coords); 
+		const auto delta = target_pos - end.center;
+		new_center = start.center - delta;
+	}
+
+	fract->SetRadius(new_radius);
+	fract->SetCenter(new_center);
+
+	// Uniforms
+	//for (const auto& [u, vals] : uniforms)
+	//{
+	//	const float new_val = lerp(vals.x, vals.y, (float)sine_interp(t));
+	//	u->val = new_val;
+	//}
+
+	for (int f = 0; f < steps_per_frame; f++)
+		fract->Update();
+}
+
+void VideoRenderData::SetColorFunction(const std::shared_ptr<ColorFunction>& new_color)
+{
+	color = std::make_shared<ColorFunction>(*new_color);
+
+	//uniforms.clear();
 }

@@ -14,6 +14,36 @@ static double inv_map(const double& y, const double& y0, const double& y1, const
 	return (x0 * y - x1 * y + x1 * y0 - x0 * y1) / (y0 - y1);
 }
 
+std::pair<glm::dvec2, glm::dvec2> GetRange(const glm::uvec2& resolution, double radius, const glm::dvec2& center)
+{
+	double aspect = (double)resolution.x / (double)resolution.y;
+	return
+	{
+		{ center.x - aspect * radius, center.x + aspect * radius },
+		{ center.y - radius, center.y + radius }
+	};
+}
+
+ImVec2 MapPosToCoords(const glm::uvec2& resolution, double radius, const glm::dvec2& center, const glm::dvec2& pos)
+{
+	auto [xRange, yRange] = GetRange(resolution, radius, center);
+	return
+	{
+		(float)map(pos.x, xRange.x, xRange.y, 0, resolution.x),
+		(float)map(pos.y, yRange.x, yRange.y, resolution.y, 0)
+	};
+}
+
+glm::dvec2 MapCoordsToPos(const glm::uvec2& resolution, double radius, const glm::dvec2& center, const ImVec2& coords)
+{
+	auto [xRange, yRange] = GetRange(resolution, radius, center);
+	return
+	{
+		map(coords.x, 0, resolution.x, xRange.x, xRange.y),
+		map(coords.y, resolution.y, 0, yRange.x, yRange.y)
+	};
+}
+
 FractalVisualizer::FractalVisualizer(const std::string& shaderSrcPath)
 {
 	SetShader(shaderSrcPath);
@@ -43,6 +73,13 @@ FractalVisualizer::FractalVisualizer(const std::string& shaderSrcPath)
 
 FractalVisualizer::~FractalVisualizer()
 {
+	GLuint buffers[] = { m_QuadIB, m_QuadVB };
+	glDeleteBuffers(IM_ARRAYSIZE(buffers), buffers);
+
+	glDeleteVertexArrays(1, &m_QuadVA);
+
+	glDeleteProgram(m_Shader);
+
 	DeleteFramebuffer();
 }
 
@@ -53,7 +90,7 @@ void FractalVisualizer::Update()
 
 	if (m_ShouldCreateFramebuffer)
 	{
-		m_ShouldCreateFramebuffer = false; 
+		m_ShouldCreateFramebuffer = false;
 
 		DeleteFramebuffer();
 		CreateFramebuffer();
@@ -136,7 +173,7 @@ void FractalVisualizer::Update()
 
 		glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RG32UI, 0, 0, m_Size.x, m_Size.y, 0);
 	}
-	
+
 	m_Frame++;
 }
 
@@ -234,32 +271,17 @@ void FractalVisualizer::ResetRender()
 
 std::pair<glm::dvec2, glm::dvec2> FractalVisualizer::GetRange() const
 {
-	double aspect = (double)m_Size.x / (double)m_Size.y;
-	return 
-	{
-		{ m_Center.x - aspect * m_Radius, m_Center.x + aspect * m_Radius },
-		{ m_Center.y - m_Radius, m_Center.y + m_Radius }
-	};
+	return ::GetRange(m_Size, m_Radius, m_Center);
 }
 
 ImVec2 FractalVisualizer::MapPosToCoords(const glm::dvec2& pos) const
 {
-	auto [xRange, yRange] = GetRange();
-	return
-	{
-		(float)map(pos.x, xRange.x, xRange.y, 0, m_Size.x),
-		(float)map(pos.y, yRange.x, yRange.y, m_Size.y, 0)
-	};
+	return ::MapPosToCoords(m_Size, m_Radius, m_Center, pos);
 }
 
 glm::dvec2 FractalVisualizer::MapCoordsToPos(const ImVec2& coords) const
 {
-	auto [xRange, yRange] = GetRange();
-	return
-	{
-		map(coords.x, 0, m_Size.x, xRange.x, xRange.y),
-		map(coords.y, m_Size.y, 0, yRange.x, yRange.y)
-	};
+	return ::MapCoordsToPos(m_Size, m_Radius, m_Center, coords);
 }
 
 void FractalVisualizer::DeleteFramebuffer()

@@ -5,6 +5,10 @@
 
 #include "ColorFunction.h"
 
+std::pair<glm::dvec2, glm::dvec2> GetRange(const glm::uvec2& resolution, double radius, const glm::dvec2& center);
+ImVec2 MapPosToCoords(const glm::uvec2& resolution, double radius, const glm::dvec2& center, const glm::dvec2& pos);
+glm::dvec2 MapCoordsToPos(const glm::uvec2& resolution, double radius, const glm::dvec2& center, const ImVec2& coords);
+
 class FractalVisualizer
 {
 public:
@@ -25,6 +29,7 @@ public:
 	void SetShader(const std::string& shaderSrcPath);
 
 	void SetColorFunction(const std::shared_ptr<ColorFunction>& colorFunc);
+	std::shared_ptr<ColorFunction> GetColorFunction() const { return m_ColorFunction; }
 
 	void SetIterationsPerFrame(int iterationsPerFrame);
 	int GetIterationsPerFrame() const { return m_IterationsPerFrame; }
@@ -33,8 +38,10 @@ public:
 	int GetFadeThreshold() const { return m_FadeThreshold; }
 
 	void SetMaxEpochs(int maxEpochs);
+	int GetMaxEpochs() const { return m_MaxEpochs; }
 
 	void SetSmoothColor(bool smoothColor);
+	bool GetSmoothColor() const { return m_SmoothColor; }
 
 	//void SetUniform()
 	GLuint GetShader() const { return m_Shader; }

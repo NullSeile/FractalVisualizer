@@ -82,6 +82,7 @@ private:
 public:
 
 	ColorFunction(const std::string& src, const std::string& name);
+	ColorFunction(const ColorFunction& other);
 	~ColorFunction();
 
 	void UpdateUniformsToShader(GLuint shader) const;

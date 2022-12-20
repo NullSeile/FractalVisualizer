@@ -22,20 +22,22 @@ enum class State
 };
 
 
-typedef std::tuple<FloatUniform*, glm::vec2> UniformRenderData;
-//typedef std::tuple<FloatUniform*, float> UniformRenderData;
+typedef std::pair<FloatUniform*, float> UniformRenderData;
 
 struct RenderKeyFrame
 {
 	glm::dvec2 center = { 0, 0 };
 	double radius = 1.0;
+	std::vector<UniformRenderData> uniforms;
 };
+
 
 struct VideoRenderData
 {
 	void Prepare(const std::string& path, const FractalVisualizer& other);
 	void UpdateIter(float t);
 	void SetColorFunction(const std::shared_ptr<ColorFunction>& new_color);
+	void FillKeyFrameUniforms(RenderKeyFrame& key);
 
 	std::string fileName = "output.mp4";
 	std::unique_ptr<FractalVisualizer> fract;

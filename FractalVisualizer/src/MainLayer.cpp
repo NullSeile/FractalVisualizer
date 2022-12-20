@@ -653,47 +653,51 @@ void MainLayer::ShowRenderWindow()
 			ImGui::SameLine();
 
 			if (ImGui::Button("+", ImVec2(button_size, button_size)))
-				data.keyFrames.emplace_back();
+			{
+				auto& key = data.keyFrames.emplace_back();
+				data.FillKeyFrameUniforms(key);
+			}
 
 			for (int i = 0; i < data.keyFrames.size(); i++)
 			{
 				auto& keyFrame = data.keyFrames[i];
-				PositionPicker(std::to_string(i).c_str(), glm::value_ptr(keyFrame.center), &keyFrame.radius, fract);
+
+				auto label = std::to_string(i);
+				ImGui::PushID(label.c_str());
+
+				bool open = ImGui::TreeNode(label.c_str());
+				ImGui::SameLine();
+				if (ImGui::SmallButton("Current"))
+				{
+					keyFrame.center = fract.GetCenter();
+					keyFrame.radius = fract.GetRadius();
+
+					
+				}
+
+				if (open)
+				{
+					ImGui::DragScalarN("Center", ImGuiDataType_Double, glm::value_ptr(keyFrame.center), 2, 0.01f, nullptr, nullptr, "%.15f");
+
+					double rmin = 1e-15, rmax = 50;
+					ImGui::DragScalar("Radius", ImGuiDataType_Double, &keyFrame.radius, 0.01f, &rmin, &rmax, "%e", ImGuiSliderFlags_Logarithmic);
+					
+					if (ImGui::TreeNode("Uniforms"))
+					{
+						for (auto& [u, val] : keyFrame.uniforms)
+							ImGui::DragFloat(u->name.c_str(), &val, u->speed);
+
+						ImGui::TreePop();
+					}
+
+					ImGui::TreePop();
+				}
+				ImGui::PopID();
+
 			}
 
 			ImGui::TreePop();
 		}
-
-		//PositionPicker("Initial position", glm::value_ptr(data.initial_center), &data.initial_radius, fract);
-
-		//PositionPicker("Final position", glm::value_ptr(data.final_center), &data.final_radius, fract);
-
-		//if (ImGui::TreeNode("Uniforms"))
-		//{
-			//if (data.colorFunction != m_Colors[m_SelectedColor].get())
-			//{
-			//	data.color = std::make_shared<ColorFunction>(*fract.GetColorFunction());
-
-			//	auto color = m_Colors[m_SelectedColor].get();
-			//	data.colorFunction = color;
-
-			//	data.uniforms.clear();
-
-			//	for (Uniform* uniform : data.color->GetUniforms())
-			//	{
-			//		if (uniform->type == UniformType::FLOAT)
-			//		{
-			//			auto ptr = dynamic_cast<FloatUniform*>(uniform);
-			//			data.uniforms.emplace_back(ptr, ptr->val);
-			//		}
-			//	}
-			//}
-
-			//for (auto& [u, vals] : data.uniforms)
-			//	DragFloat2R(u->name.c_str(), glm::value_ptr(vals), glm::vec2(u->val), u->speed);
-
-		//	ImGui::TreePop();
-		//}
 
 		bool render_preview_open = (m_State == State::Previewing);
 		if (ImGui::BeginPopupModal("Render Preview", &render_preview_open))
@@ -927,19 +931,9 @@ void VideoRenderData::Prepare(const std::string& path, const FractalVisualizer& 
 	fract->SetSmoothColor(other.GetSmoothColor());
 	fract->SetFadeThreshold(other.GetFadeThreshold());
 	fract->SetIterationsPerFrame(other.GetIterationsPerFrame());
-
-	//fract->SetCenter(initial_center);
-	//fract->SetRadius(initial_radius);
 	fract->SetSize(resolution);
 
-	const size_t width = resolution.x;
-	const size_t height = resolution.y;
-
 	steps = (size_t)std::ceil(fps * duration);
-	//delta = std::pow(final_radius / initial_radius, 1.0 / steps);
-
-	//initial_coords = fract->MapPosToCoords(final_center);
-	//final_coords = ImVec2{ (float)width / 2.f, (float)height / 2.f };
 
 	current_iter = 0;
 }
@@ -947,44 +941,43 @@ void VideoRenderData::Prepare(const std::string& path, const FractalVisualizer& 
 void VideoRenderData::UpdateIter(float t)
 {
 	const float x = t * (keyFrames.size() - 1);
-	const int i = (int)std::floor(x);
+	int i = (int)std::floor(x);
+	float lt = std::fmod(x, 1.f);
 
-	glm::dvec2 new_center = { 0, 0 };
-	double new_radius = 1.0;
-
-	if (x == i)
+	if (i == keyFrames.size() - 1)
 	{
-		new_radius = keyFrames[i].radius;
-		new_center = keyFrames[i].center;
+		i -= 1;
+		lt = 1.f;
 	}
-	else
-	{
-		const double lt = std::fmod(x, 1.f);
 
-		const auto& start = keyFrames[i];
-		const auto& end = keyFrames[i + 1];
-		new_radius = mult_interp(start.radius, end.radius, lt);
+	const auto& start = keyFrames[i];
+	const auto& end = keyFrames[i + 1];
 
-		// Coords of end.center should lerp to the center of the screen
-		const auto initial_coords = MapPosToCoords(resolution, start.radius, start.center, end.center); // Screen coordinates of end.center at t=0
-		const auto final_coords = ImVec2{ (float)resolution.x / 2.f, (float)resolution.y / 2.f };
-		const auto target_coords = lerp(initial_coords, final_coords, (float)lt); // Coordinates end.center should be at the current t
+	double new_radius = mult_interp(start.radius, end.radius, lt);
 
-		// Move the center to set the coords of end.center to be target_coords
-		const auto target_pos = MapCoordsToPos(resolution, new_radius, start.center, target_coords); 
-		const auto delta = target_pos - end.center;
-		new_center = start.center - delta;
-	}
+	// Coords of end.center should lerp to the center of the screen
+	const auto initial_coords = MapPosToCoords(resolution, start.radius, start.center, end.center); // Screen coordinates of end.center at t=0
+	const auto final_coords = ImVec2{ (float)resolution.x / 2.f, (float)resolution.y / 2.f };
+	const auto target_coords = lerp(initial_coords, final_coords, (float)lt); // Coordinates end.center should be at the current t
+
+	// Move the center to set the coords of end.center to be target_coords
+	const auto target_pos = MapCoordsToPos(resolution, new_radius, start.center, target_coords); 
+	const auto delta = target_pos - end.center;
+	glm::dvec2 new_center = start.center - delta;
 
 	fract->SetRadius(new_radius);
 	fract->SetCenter(new_center);
 
 	// Uniforms
-	//for (const auto& [u, vals] : uniforms)
-	//{
-	//	const float new_val = lerp(vals.x, vals.y, (float)sine_interp(t));
-	//	u->val = new_val;
-	//}
+	for (int i = 0; i < start.uniforms.size(); i++)
+	{
+		auto u = start.uniforms[i].first;
+		auto start_v = start.uniforms[i].second;
+		auto end_v = end.uniforms[i].second;
+		const float new_val = lerp(start_v, end_v, lt);
+
+		u->val = new_val;
+	}
 
 	for (int f = 0; f < steps_per_frame; f++)
 		fract->Update();
@@ -994,5 +987,19 @@ void VideoRenderData::SetColorFunction(const std::shared_ptr<ColorFunction>& new
 {
 	color = std::make_shared<ColorFunction>(*new_color);
 
-	//uniforms.clear();
+	for (auto& key : keyFrames)
+		FillKeyFrameUniforms(key);
+}
+
+void VideoRenderData::FillKeyFrameUniforms(RenderKeyFrame& key)
+{
+	key.uniforms.clear();
+	for (auto u : color->GetUniforms())
+	{
+		if (u->type == UniformType::FLOAT)
+		{
+			auto ptr = dynamic_cast<FloatUniform*>(u);
+			key.uniforms.emplace_back(ptr, ptr->val);
+		}
+	}
 }

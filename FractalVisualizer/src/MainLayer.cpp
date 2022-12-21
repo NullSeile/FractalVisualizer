@@ -4,6 +4,8 @@
 #include <filesystem>
 #include <fstream>
 #include <format>
+#include <algorithm>
+#include <functional>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -642,7 +644,89 @@ void MainLayer::ShowRenderWindow()
 		static int color_index = (int)m_SelectedColor;
 		if (ComboR("Color Function", &color_index, (int)m_SelectedColor, m_ColorsName.data(), (int)m_ColorsName.size()))
 			data.SetColorFunction(m_Colors[color_index]);
-			
+		
+		if (ImGui::TreeNode("Animation"))
+		{
+			if (ImGui::TreeNode("Radius"))
+			{
+				const float button_size = ImGui::GetFrameHeight();
+				if (ImGui::Button("-", ImVec2(button_size, button_size)))
+					if (data.radiusKeyFrames.size() > 1)
+						data.radiusKeyFrames.pop_back();
+
+				ImGui::SameLine();
+
+				if (ImGui::Button("+", ImVec2(button_size, button_size)))
+					data.radiusKeyFrames.emplace_back(std::make_shared<KeyFrame<double>>(1.f, 1.0));
+
+				bool edited = false;
+				for (auto& key : data.radiusKeyFrames)
+				{
+					auto& [t, r] = *key;
+
+					ImGui::PushID(key.get());
+					ImGui::PushItemWidth(ImGui::CalcItemWidth() * 0.25f);
+					
+					if (ImGui::DragFloat("##time", &t, 0.01f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+						edited = true;
+
+					ImGui::PopItemWidth(); 
+					ImGui::SameLine();
+					double rmin = 1e-15, rmax = 50;
+					ImGui::PushItemWidth(ImGui::CalcItemWidth() * 0.75f);
+					ImGui::DragScalar("##radius", ImGuiDataType_Double, &r, 0.01f, &rmin, &rmax, "%e", ImGuiSliderFlags_Logarithmic);
+					ImGui::PopItemWidth();
+
+					ImGui::PopID();
+				}
+				if (edited)
+					data.SortKeyFrames();
+
+				ImGui::TreePop();
+			}
+			if (ImGui::TreeNode("Center"))
+			{
+				const float button_size = ImGui::GetFrameHeight();
+				if (ImGui::Button("-", ImVec2(button_size, button_size)))
+					if (data.centerKeyFrames.size() > 1)
+						data.centerKeyFrames.pop_back();
+
+				ImGui::SameLine();
+
+				if (ImGui::Button("+", ImVec2(button_size, button_size)))
+					data.centerKeyFrames.emplace_back(std::make_shared<KeyFrame<glm::dvec2>>(1.f, glm::dvec2{ 0, 0 }));
+
+				bool edited = false;
+				for (auto& key : data.centerKeyFrames)
+				{
+					auto& [t, p] = *key;
+
+					ImGui::PushID(key.get());
+					ImGui::PushItemWidth(ImGui::CalcItemWidth() * 0.25f);
+
+					if (ImGui::DragFloat("##time", &t, 0.01f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+						edited = true;
+
+					ImGui::PopItemWidth();
+					ImGui::SameLine();
+					ImGui::PushItemWidth(ImGui::CalcItemWidth() * 0.75f);
+					double cmin = -2, cmax = 2;
+					ImGui::DragScalarN("##center", ImGuiDataType_Double, glm::value_ptr(p), 2, (float)m_Julia.GetRadius() / 200.f, &cmin, &cmax, "%.15f");
+
+					ImGui::PopItemWidth();
+
+					ImGui::PopID();
+				}
+				if (edited)
+					data.SortKeyFrames();
+
+				ImGui::TreePop();
+			}
+
+			ImGui::TreePop();
+		}
+
+#if 0
 		if (ImGui::TreeNode("Animation"))
 		{
 			const float button_size = ImGui::GetFrameHeight();
@@ -698,6 +782,7 @@ void MainLayer::ShowRenderWindow()
 
 			ImGui::TreePop();
 		}
+#endif
 
 		bool render_preview_open = (m_State == State::Previewing);
 		if (ImGui::BeginPopupModal("Render Preview", &render_preview_open))
@@ -729,7 +814,8 @@ void MainLayer::ShowRenderWindow()
 		ImGui::SameLine();
 		if (ImGui::Button("Render Video"))
 		{
-			data.fileName = std::format("{}_{:.15f},{:.15f}", fractal_names[fractal_index], data.keyFrames.back().center.x, data.keyFrames.back().center.y);
+			//data.fileName = std::format("{}_{:.15f},{:.15f}", fractal_names[fractal_index], data.keyFrames.back().center.x, data.keyFrames.back().center.y);
+			data.fileName = "nye";
 			if (GLCore::Application::Get().GetWindow().SaveFileDialog("mp4 (*.mp4)\0*.mp4\0", data.fileName))
 			{
 				m_State = State::Rendering;
@@ -938,8 +1024,78 @@ void VideoRenderData::Prepare(const std::string& path, const FractalVisualizer& 
 	current_iter = 0;
 }
 
+double VideoRenderData::GetRadius(float t)
+{
+	// Assuming ordered keyframes
+	if (t <= radiusKeyFrames.front()->t)
+		return radiusKeyFrames.front()->val;
+
+	if (t >= radiusKeyFrames.back()->t)
+		return radiusKeyFrames.back()->val;
+
+	for (int i = 0; i < radiusKeyFrames.size() - 1; i++)
+	{
+		if (radiusKeyFrames[i]->t <= t && t <= radiusKeyFrames[i + 1]->t)
+		{
+			float lt = map(t, radiusKeyFrames[i]->t, radiusKeyFrames[i + 1]->t, 0.f, 1.f);
+			return mult_interp(radiusKeyFrames[i]->val, radiusKeyFrames[i + 1]->val, lt);
+		}
+	}
+}
+
+template<typename T, typename F>
+T GetInterpolation(const std::vector<std::shared_ptr<KeyFrame<T>>>& keyFrames, float t, F interp)
+{
+	// Assuming ordered keyframes
+	if (t <= keyFrames.front()->t)
+		return keyFrames.front()->val;
+
+	if (t >= keyFrames.back()->t)
+		return keyFrames.back()->val;
+
+	for (int i = 0; i < keyFrames.size() - 1; i++)
+	{
+		auto& a = keyFrames[i];
+		auto& b = keyFrames[i+1];
+		if (a->t <= t && t <= b->t)
+		{
+			float lt = map(t, a->t, b->t, 0.f, 1.f);
+			return interp(*keyFrames[i], *keyFrames[i + 1], lt);
+		}
+	}
+}
+
+glm::dvec2 center_interp(const glm::ivec2& resolution, double initial_radius, double current_radius, const KeyFrame<glm::dvec2>& a, const KeyFrame<glm::dvec2>& b, float t)
+{
+	// Coords of end.center should lerp to the center of the screen
+	const auto initial_coords = MapPosToCoords(resolution, initial_radius, a.val, b.val); // Screen coordinates of end.center at t=0
+	const auto final_coords = ImVec2{ (float)resolution.x / 2.f, (float)resolution.y / 2.f };
+	const auto target_coords = lerp(initial_coords, final_coords, (float)t); // Coordinates end.center should be at the current t
+
+	// Move the center to set the coords of end.center to be target_coords
+	const auto target_pos = MapCoordsToPos(resolution, current_radius, a.val, target_coords);
+	const auto delta = target_pos - b.val;
+	glm::dvec2 new_center = a.val - delta;
+	return new_center;
+}
+
+
+
 void VideoRenderData::UpdateIter(float t)
 {
+	static const auto GetRadius = [this](float t) { 
+		return GetInterpolation(radiusKeyFrames, t, [](const KeyFrame<double>& a, const KeyFrame<double>& b, float t) { return mult_interp(a.val, b.val, t); });
+	};
+	auto new_radius = GetRadius(t);
+
+	auto f = [this, new_radius](const KeyFrame<glm::dvec2>& a, const KeyFrame<glm::dvec2>& b, float t) { 
+		return center_interp(resolution, GetRadius(a.t), new_radius, a, b, t); 
+	};
+	auto new_center = GetInterpolation(centerKeyFrames, t, f);
+	fract->SetRadius(new_radius);
+	fract->SetCenter(new_center);
+
+#if 0
 	const float x = t * (keyFrames.size() - 1);
 	int i = (int)std::floor(x);
 	float lt = std::fmod(x, 1.f);
@@ -978,6 +1134,7 @@ void VideoRenderData::UpdateIter(float t)
 
 		u->val = new_val;
 	}
+#endif
 
 	for (int f = 0; f < steps_per_frame; f++)
 		fract->Update();
@@ -986,20 +1143,23 @@ void VideoRenderData::UpdateIter(float t)
 void VideoRenderData::SetColorFunction(const std::shared_ptr<ColorFunction>& new_color)
 {
 	color = std::make_shared<ColorFunction>(*new_color);
-
-	for (auto& key : keyFrames)
-		FillKeyFrameUniforms(key);
 }
 
-void VideoRenderData::FillKeyFrameUniforms(RenderKeyFrame& key)
+void VideoRenderData::SortKeyFrames()
 {
-	key.uniforms.clear();
-	for (auto u : color->GetUniforms())
-	{
-		if (u->type == UniformType::FLOAT)
-		{
-			auto ptr = dynamic_cast<FloatUniform*>(u);
-			key.uniforms.emplace_back(ptr, ptr->val);
-		}
-	}
+	std::sort(radiusKeyFrames.begin(), radiusKeyFrames.end(), [](auto a, auto b) { return a->t < b->t; });
+	std::sort(centerKeyFrames.begin(), centerKeyFrames.end(), [](auto a, auto b) { return a->t < b->t; });
 }
+
+//void VideoRenderData::FillKeyFrameUniforms(RenderKeyFrame& key)
+//{
+//	key.uniforms.clear();
+//	for (auto u : color->GetUniforms())
+//	{
+//		if (u->type == UniformType::FLOAT)
+//		{
+//			auto ptr = dynamic_cast<FloatUniform*>(u);
+//			key.uniforms.emplace_back(ptr, ptr->val);
+//		}
+//	}
+//}

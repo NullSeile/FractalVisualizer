@@ -31,13 +31,22 @@ struct RenderKeyFrame
 	std::vector<UniformRenderData> uniforms;
 };
 
+template<typename T>
+struct KeyFrame
+{
+	KeyFrame(float t, T val) : t(t), val(val) {}
+	float t;
+	T val;
+};
 
 struct VideoRenderData
 {
 	void Prepare(const std::string& path, const FractalVisualizer& other);
 	void UpdateIter(float t);
+	double GetRadius(float t);
 	void SetColorFunction(const std::shared_ptr<ColorFunction>& new_color);
-	void FillKeyFrameUniforms(RenderKeyFrame& key);
+	void SortKeyFrames();
+
 
 	std::string fileName = "output.mp4";
 	std::unique_ptr<FractalVisualizer> fract;
@@ -55,7 +64,15 @@ struct VideoRenderData
 
 	int current_iter = 0;
 
-	std::vector<RenderKeyFrame> keyFrames = { RenderKeyFrame(), RenderKeyFrame() };
+
+	std::vector<std::shared_ptr<KeyFrame<double>>> radiusKeyFrames = {
+		std::make_shared<KeyFrame<double>>(0.f, 1.0),
+		std::make_shared<KeyFrame<double>>(0.8f, 1e-4),
+	};
+	std::vector<std::shared_ptr<KeyFrame<glm::dvec2>>> centerKeyFrames = {
+		std::make_shared<KeyFrame<glm::dvec2>>(0.f, glm::dvec2{ 0.0, 0.0 }),
+		std::make_shared<KeyFrame<glm::dvec2>>(1.f, glm::dvec2{ -2.0, 0.0 }),
+	};
 };
 
 class MainLayer : public GLCore::Layer

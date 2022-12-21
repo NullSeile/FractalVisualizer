@@ -44,6 +44,12 @@ ImVec2 GlmToImVec(const glm::vec<2, T>& vec)
 }
 
 template<typename T>
+T map(const T& x, const T& x0, const T& x1, const T& y0, const T& y1)
+{
+	return y0 + ((y1 - y0) / (x1 - x0)) * (x - x0);
+}
+
+template<typename T>
 T sine_interp(const T& x)
 {
 	return -cos(M_PI * x) * 0.5 + 0.5;

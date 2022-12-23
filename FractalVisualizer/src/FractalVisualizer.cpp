@@ -185,14 +185,20 @@ void FractalVisualizer::SetCenter(const glm::dvec2& center)
 
 void FractalVisualizer::SetRadius(double radius)
 {
-	m_Radius = radius;
-	ResetRender();
+	if (m_Radius != radius)
+	{
+		m_Radius = radius;
+		ResetRender();
+	}
 }
 
 void FractalVisualizer::SetSize(const glm::uvec2& size)
 {
-	m_Size = size;
-	m_ShouldCreateFramebuffer = true;
+	if (m_Size != size)
+	{
+		m_Size = size;
+		m_ShouldCreateFramebuffer = true;
+	}
 }
 
 void FractalVisualizer::SetShader(const std::string& shaderSrcPath)

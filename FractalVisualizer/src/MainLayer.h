@@ -18,8 +18,7 @@ struct SmoothZoomData
 enum class State
 {
 	Exploring = 0,
-	Rendering,
-	Previewing
+	Rendering
 };
 
 class MainLayer : public GLCore::Layer
@@ -51,6 +50,7 @@ private:
 	void ShowJuliaWindow();
 	void ShowControlsWindow();
 	void ShowRenderWindow();
+	void ShowPreviewWindow();
 
 	bool m_VSync = true;
 
@@ -65,9 +65,9 @@ private:
 
 	State m_State = State::Exploring;
 
-	bool m_ShouldUpdatePreview = false;
+	bool m_ShouldUpdatePreview = true;
 	float m_PreviewT = 0.0;
-
+	bool m_PreviewMinimized = true;
 	VideoRenderer m_VideoRenderer;
 
 	std::vector<ColorPreview> m_ColorsPreview;
@@ -77,6 +77,7 @@ private:
 	ImColor m_IterationsColor = { 1.f, 1.f, 1.f, 0.9f };
 	bool m_ShowHelp = true;
 	bool m_ShowDemo = false;
+	bool m_ShowStyle = false;
 
 	SmoothZoomData m_MandelbrotZoomData;
 	bool m_MandelbrotMinimized = true;

@@ -128,3 +128,9 @@ void VideoRenderer::SetColorFunction(const std::shared_ptr<ColorFunction>& new_c
 		}
 	}
 }
+
+void VideoRenderer::UpdateToFractal()
+{
+	fract->SetSize(resolution);
+	fract->SetColorFunction(color);
+}

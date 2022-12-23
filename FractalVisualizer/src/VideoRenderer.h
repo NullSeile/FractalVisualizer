@@ -18,7 +18,7 @@ public:
 	void Prepare(const std::string& path, const FractalVisualizer& other);
 	void UpdateIter(float t);
 	void SetColorFunction(const std::shared_ptr<ColorFunction>& new_color);
-
+	void UpdateToFractal();
 
 	std::string fileName = "output.mp4";
 	std::unique_ptr<FractalVisualizer> fract;

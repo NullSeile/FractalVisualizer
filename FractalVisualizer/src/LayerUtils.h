@@ -6,6 +6,19 @@
 #include <imgui_internal.h>
 #include <IconsMaterialDesign.h>
 
+ImVec2 FitToScreen(const ImVec2& source, const ImVec2& screen)
+{
+	float wi = source.x;
+	float hi = source.y;
+	float ws = screen.x;
+	float hs = screen.y;
+
+	float ri = source.x / source.y;
+	float rs = screen.x / screen.y;
+
+	return rs > ri ? ImVec2{ wi * hs / hi, hs } : ImVec2{ ws, hi * ws / wi };
+}
+
 static bool SaveImageDialog(std::string& fileName)
 {
 	return GLCore::Application::Get().GetWindow().SaveFileDialog(

@@ -7,13 +7,10 @@
 #include <algorithm>
 #include <functional>
 
-#define _USE_MATH_DEFINES
-#include <math.h>
-
-#include <imgui_internal.h>
 #include "LayerUtils.h"
-
+#include <imgui_internal.h>
 #include <IconsMaterialDesign.h>
+
 
 static glm::uvec2 previewSize = { 100, 1 };
 
@@ -30,7 +27,7 @@ MainLayer::MainLayer()
 	m_Mandelbrot.SetColorFunction(m_Colors[m_SelectedColor]);
 	m_Julia.SetColorFunction(m_Colors[m_SelectedColor]);
 
-	m_VideoRenderData.SetColorFunction(m_Colors[m_SelectedColor]);
+	m_VideoRenderer.SetColorFunction(m_Colors[m_SelectedColor]);
 
 	m_Mandelbrot.SetIterationsPerFrame(m_ItersPerSteps);
 	m_Julia.SetIterationsPerFrame(m_ItersPerSteps);
@@ -115,7 +112,7 @@ void MainLayer::OnUpdate(GLCore::Timestep ts)
 	}
 	case State::Rendering:
 	{
-		auto& data = m_VideoRenderData;
+		auto& data = m_VideoRenderer;
 		auto& i = data.current_iter;
 
 		if (i < data.steps)
@@ -143,7 +140,7 @@ void MainLayer::OnUpdate(GLCore::Timestep ts)
 	{
 		if (m_ShouldUpdatePreview)
 		{
-			m_VideoRenderData.UpdateIter(m_PreviewT);
+			m_VideoRenderer.UpdateIter(m_PreviewT);
 			m_ShouldUpdatePreview = false;
 		}
 		break;
@@ -179,6 +176,41 @@ void MainLayer::OnImGuiRender()
 
 	ShowMandelbrotWindow();
 	ShowJuliaWindow();
+}
+
+
+void FractalHandleZoom(FractalVisualizer& fract, int resolutionPercentage, float fps, bool smoothZoom, SmoothZoomData& data)
+{
+	auto io = ImGui::GetIO();
+
+	if (ImGui::IsWindowHovered() && io.MouseWheel != 0)
+	{
+		data.start_radius = fract.GetRadius();
+		data.target_radius = data.target_radius / std::pow(1.1f, io.MouseWheel);
+		data.target_pos = WindowPosToImagePos(ImGui::GetMousePos(), resolutionPercentage);
+		data.t = 0.0;
+
+		if (!smoothZoom)
+			data.t = 1.0;
+		ZoomToScreenPos(fract, data.target_pos, data.target_radius);
+	}
+	if (smoothZoom)
+	{
+		if (data.t < 1.0)
+		{
+			data.t += 8.0 / fps;
+
+			if (data.t >= 1.0)
+				data.t = 1.0;
+
+			// (1 - a^x) / (1 - a)
+			double a = 0.025;
+			double t = (1.0 - std::pow(a, data.t)) / (1.0 - a);
+
+			double radius = data.start_radius * (1 - t) + data.target_radius * t;
+			ZoomToScreenPos(fract, data.target_pos, radius);
+		}
+	}
 }
 
 void MainLayer::ShowMandelbrotWindow()
@@ -557,6 +589,50 @@ void MainLayer::ShowControlsWindow()
 	ImGui::PopStyleColor();
 }
 
+template<typename T>
+void SortKeyFrames(std::vector<std::shared_ptr<KeyFrame<T>>>& keyFrames)
+{
+	std::sort(keyFrames.begin(), keyFrames.end(), [](auto a, auto b) { return a->t < b->t; });
+}
+
+template<typename T>
+void EditKeyFrames(std::vector<std::shared_ptr<KeyFrame<T>>>& keyFrames, T new_val, std::function<void(T&)> value_edit)
+{
+	const float button_size = ImGui::GetFrameHeight();
+	if (ImGui::Button("-", ImVec2(button_size, button_size)))
+		if (keyFrames.size() > 1)
+			keyFrames.pop_back();
+
+	ImGui::SameLine();
+
+	if (ImGui::Button("+", ImVec2(button_size, button_size)))
+		keyFrames.emplace_back(std::make_shared<KeyFrame<T>>(1.f, new_val));
+
+	bool edited = false;
+	for (auto& key : keyFrames)
+	{
+		auto& [t, v] = *key;
+
+		ImGui::PushID(key.get());
+		ImGui::PushItemWidth(ImGui::CalcItemWidth() * 0.25f);
+
+		if (ImGui::DragFloat("##time", &t, 0.01f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+			edited = true;
+
+		ImGui::PopItemWidth();
+		ImGui::SameLine();
+		ImGui::PushItemWidth(ImGui::CalcItemWidth() * 0.75f);
+
+		value_edit(v);
+
+		ImGui::PopItemWidth();
+
+		ImGui::PopID();
+	}
+	if (edited)
+		SortKeyFrames(keyFrames);
+}
+
 void MainLayer::ShowRenderWindow()
 {
 	ImGui::Begin("Rendering");
@@ -615,7 +691,7 @@ void MainLayer::ShowRenderWindow()
 	{
 		ImGui::PushID("Video");
 
-		auto& data = m_VideoRenderData;
+		auto& data = m_VideoRenderer;
 
 		//bool rendering_video = m_State == State::Rendering;
 		if (ImGui::BeginPopupModal("Rendering Video"))
@@ -649,140 +725,41 @@ void MainLayer::ShowRenderWindow()
 		{
 			if (ImGui::TreeNode("Radius"))
 			{
-				const float button_size = ImGui::GetFrameHeight();
-				if (ImGui::Button("-", ImVec2(button_size, button_size)))
-					if (data.radiusKeyFrames.size() > 1)
-						data.radiusKeyFrames.pop_back();
-
-				ImGui::SameLine();
-
-				if (ImGui::Button("+", ImVec2(button_size, button_size)))
-					data.radiusKeyFrames.emplace_back(std::make_shared<KeyFrame<double>>(1.f, 1.0));
-
-				bool edited = false;
-				for (auto& key : data.radiusKeyFrames)
+				EditKeyFrames<double>(data.radiusKeyFrames, fract.GetRadius(), [&fract](double& r)
 				{
-					auto& [t, r] = *key;
-
-					ImGui::PushID(key.get());
-					ImGui::PushItemWidth(ImGui::CalcItemWidth() * 0.25f);
-					
-					if (ImGui::DragFloat("##time", &t, 0.01f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
-						edited = true;
-
-					ImGui::PopItemWidth(); 
-					ImGui::SameLine();
-					double rmin = 1e-15, rmax = 50;
-					ImGui::PushItemWidth(ImGui::CalcItemWidth() * 0.75f);
-					ImGui::DragScalar("##radius", ImGuiDataType_Double, &r, 0.01f, &rmin, &rmax, "%e", ImGuiSliderFlags_Logarithmic);
-					ImGui::PopItemWidth();
-
-					ImGui::PopID();
-				}
-				if (edited)
-					data.SortKeyFrames();
+					DragDoubleR("##radius", &r, fract.GetRadius(), 0.01f, 1e-15, 50, "%e", ImGuiSliderFlags_Logarithmic);
+				});
 
 				ImGui::TreePop();
 			}
 			if (ImGui::TreeNode("Center"))
 			{
-				const float button_size = ImGui::GetFrameHeight();
-				if (ImGui::Button("-", ImVec2(button_size, button_size)))
-					if (data.centerKeyFrames.size() > 1)
-						data.centerKeyFrames.pop_back();
-
-				ImGui::SameLine();
-
-				if (ImGui::Button("+", ImVec2(button_size, button_size)))
-					data.centerKeyFrames.emplace_back(std::make_shared<KeyFrame<glm::dvec2>>(1.f, glm::dvec2{ 0, 0 }));
-
-				bool edited = false;
-				for (auto& key : data.centerKeyFrames)
+				EditKeyFrames<glm::dvec2>(data.centerKeyFrames, fract.GetCenter(), [&fract](glm::dvec2& c)
 				{
-					auto& [t, p] = *key;
+					DragDouble2R("##center", glm::value_ptr(c), fract.GetCenter(), (float)fract.GetRadius() / 70.f, -2.0, 2.0, "%.15f");
+				});
 
-					ImGui::PushID(key.get());
-					ImGui::PushItemWidth(ImGui::CalcItemWidth() * 0.25f);
+				ImGui::TreePop();
+			}
+			if (ImGui::TreeNode("Uniforms"))
+			{
+				for (auto& [u, keys] : data.uniformsKeyFrames)
+				{
+					if (ImGui::TreeNode(u->name.c_str()))
+					{
+						EditKeyFrames<float>(keys, 1.f, [u](float& v)
+						{
+							ImGui::DragFloat("##val", &v, u->speed);
+						});
 
-					if (ImGui::DragFloat("##time", &t, 0.01f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
-						edited = true;
-
-					ImGui::PopItemWidth();
-					ImGui::SameLine();
-					ImGui::PushItemWidth(ImGui::CalcItemWidth() * 0.75f);
-					double cmin = -2, cmax = 2;
-					ImGui::DragScalarN("##center", ImGuiDataType_Double, glm::value_ptr(p), 2, (float)m_Julia.GetRadius() / 200.f, &cmin, &cmax, "%.15f");
-
-					ImGui::PopItemWidth();
-
-					ImGui::PopID();
+						ImGui::TreePop();
+					}
 				}
-				if (edited)
-					data.SortKeyFrames();
-
 				ImGui::TreePop();
 			}
 
 			ImGui::TreePop();
 		}
-
-#if 0
-		if (ImGui::TreeNode("Animation"))
-		{
-			const float button_size = ImGui::GetFrameHeight();
-			if (ImGui::Button("-", ImVec2(button_size, button_size)))
-				if (data.keyFrames.size() > 2)
-					data.keyFrames.pop_back();
-
-			ImGui::SameLine();
-
-			if (ImGui::Button("+", ImVec2(button_size, button_size)))
-			{
-				auto& key = data.keyFrames.emplace_back();
-				data.FillKeyFrameUniforms(key);
-			}
-
-			for (int i = 0; i < data.keyFrames.size(); i++)
-			{
-				auto& keyFrame = data.keyFrames[i];
-
-				auto label = std::to_string(i);
-				ImGui::PushID(label.c_str());
-
-				bool open = ImGui::TreeNode(label.c_str());
-				ImGui::SameLine();
-				if (ImGui::SmallButton("Current"))
-				{
-					keyFrame.center = fract.GetCenter();
-					keyFrame.radius = fract.GetRadius();
-
-					
-				}
-
-				if (open)
-				{
-					ImGui::DragScalarN("Center", ImGuiDataType_Double, glm::value_ptr(keyFrame.center), 2, 0.01f, nullptr, nullptr, "%.15f");
-
-					double rmin = 1e-15, rmax = 50;
-					ImGui::DragScalar("Radius", ImGuiDataType_Double, &keyFrame.radius, 0.01f, &rmin, &rmax, "%e", ImGuiSliderFlags_Logarithmic);
-					
-					if (ImGui::TreeNode("Uniforms"))
-					{
-						for (auto& [u, val] : keyFrame.uniforms)
-							ImGui::DragFloat(u->name.c_str(), &val, u->speed);
-
-						ImGui::TreePop();
-					}
-
-					ImGui::TreePop();
-				}
-				ImGui::PopID();
-
-			}
-
-			ImGui::TreePop();
-		}
-#endif
 
 		bool render_preview_open = (m_State == State::Previewing);
 		if (ImGui::BeginPopupModal("Render Preview", &render_preview_open))
@@ -1009,157 +986,3 @@ void main()
 	m_Mandelbrot.SetColorFunction(m_Colors[m_SelectedColor]);
 	m_Julia.SetColorFunction(m_Colors[m_SelectedColor]);
 }
-
-void VideoRenderData::Prepare(const std::string& path, const FractalVisualizer& other)
-{
-	fract = std::make_unique<FractalVisualizer>(path);
-	fract->SetColorFunction(color);
-	fract->SetSmoothColor(other.GetSmoothColor());
-	fract->SetFadeThreshold(other.GetFadeThreshold());
-	fract->SetIterationsPerFrame(other.GetIterationsPerFrame());
-	fract->SetSize(resolution);
-
-	steps = (size_t)std::ceil(fps * duration);
-
-	current_iter = 0;
-}
-
-double VideoRenderData::GetRadius(float t)
-{
-	// Assuming ordered keyframes
-	if (t <= radiusKeyFrames.front()->t)
-		return radiusKeyFrames.front()->val;
-
-	if (t >= radiusKeyFrames.back()->t)
-		return radiusKeyFrames.back()->val;
-
-	for (int i = 0; i < radiusKeyFrames.size() - 1; i++)
-	{
-		if (radiusKeyFrames[i]->t <= t && t <= radiusKeyFrames[i + 1]->t)
-		{
-			float lt = map(t, radiusKeyFrames[i]->t, radiusKeyFrames[i + 1]->t, 0.f, 1.f);
-			return mult_interp(radiusKeyFrames[i]->val, radiusKeyFrames[i + 1]->val, lt);
-		}
-	}
-}
-
-template<typename T, typename F>
-T GetInterpolation(const std::vector<std::shared_ptr<KeyFrame<T>>>& keyFrames, float t, F interp)
-{
-	// Assuming ordered keyframes
-	if (t <= keyFrames.front()->t)
-		return keyFrames.front()->val;
-
-	if (t >= keyFrames.back()->t)
-		return keyFrames.back()->val;
-
-	for (int i = 0; i < keyFrames.size() - 1; i++)
-	{
-		auto& a = keyFrames[i];
-		auto& b = keyFrames[i+1];
-		if (a->t <= t && t <= b->t)
-		{
-			float lt = map(t, a->t, b->t, 0.f, 1.f);
-			return interp(*keyFrames[i], *keyFrames[i + 1], lt);
-		}
-	}
-}
-
-glm::dvec2 center_interp(const glm::ivec2& resolution, double initial_radius, double current_radius, const KeyFrame<glm::dvec2>& a, const KeyFrame<glm::dvec2>& b, float t)
-{
-	// Coords of end.center should lerp to the center of the screen
-	const auto initial_coords = MapPosToCoords(resolution, initial_radius, a.val, b.val); // Screen coordinates of end.center at t=0
-	const auto final_coords = ImVec2{ (float)resolution.x / 2.f, (float)resolution.y / 2.f };
-	const auto target_coords = lerp(initial_coords, final_coords, (float)t); // Coordinates end.center should be at the current t
-
-	// Move the center to set the coords of end.center to be target_coords
-	const auto target_pos = MapCoordsToPos(resolution, current_radius, a.val, target_coords);
-	const auto delta = target_pos - b.val;
-	glm::dvec2 new_center = a.val - delta;
-	return new_center;
-}
-
-
-
-void VideoRenderData::UpdateIter(float t)
-{
-	static const auto GetRadius = [this](float t) { 
-		return GetInterpolation(radiusKeyFrames, t, [](const KeyFrame<double>& a, const KeyFrame<double>& b, float t) { return mult_interp(a.val, b.val, t); });
-	};
-	auto new_radius = GetRadius(t);
-
-	auto f = [this, new_radius](const KeyFrame<glm::dvec2>& a, const KeyFrame<glm::dvec2>& b, float t) { 
-		return center_interp(resolution, GetRadius(a.t), new_radius, a, b, t); 
-	};
-	auto new_center = GetInterpolation(centerKeyFrames, t, f);
-	fract->SetRadius(new_radius);
-	fract->SetCenter(new_center);
-
-#if 0
-	const float x = t * (keyFrames.size() - 1);
-	int i = (int)std::floor(x);
-	float lt = std::fmod(x, 1.f);
-
-	if (i == keyFrames.size() - 1)
-	{
-		i -= 1;
-		lt = 1.f;
-	}
-
-	const auto& start = keyFrames[i];
-	const auto& end = keyFrames[i + 1];
-
-	double new_radius = mult_interp(start.radius, end.radius, lt);
-
-	// Coords of end.center should lerp to the center of the screen
-	const auto initial_coords = MapPosToCoords(resolution, start.radius, start.center, end.center); // Screen coordinates of end.center at t=0
-	const auto final_coords = ImVec2{ (float)resolution.x / 2.f, (float)resolution.y / 2.f };
-	const auto target_coords = lerp(initial_coords, final_coords, (float)lt); // Coordinates end.center should be at the current t
-
-	// Move the center to set the coords of end.center to be target_coords
-	const auto target_pos = MapCoordsToPos(resolution, new_radius, start.center, target_coords); 
-	const auto delta = target_pos - end.center;
-	glm::dvec2 new_center = start.center - delta;
-
-	fract->SetRadius(new_radius);
-	fract->SetCenter(new_center);
-
-	// Uniforms
-	for (int i = 0; i < start.uniforms.size(); i++)
-	{
-		auto u = start.uniforms[i].first;
-		auto start_v = start.uniforms[i].second;
-		auto end_v = end.uniforms[i].second;
-		const float new_val = lerp(start_v, end_v, lt);
-
-		u->val = new_val;
-	}
-#endif
-
-	for (int f = 0; f < steps_per_frame; f++)
-		fract->Update();
-}
-
-void VideoRenderData::SetColorFunction(const std::shared_ptr<ColorFunction>& new_color)
-{
-	color = std::make_shared<ColorFunction>(*new_color);
-}
-
-void VideoRenderData::SortKeyFrames()
-{
-	std::sort(radiusKeyFrames.begin(), radiusKeyFrames.end(), [](auto a, auto b) { return a->t < b->t; });
-	std::sort(centerKeyFrames.begin(), centerKeyFrames.end(), [](auto a, auto b) { return a->t < b->t; });
-}
-
-//void VideoRenderData::FillKeyFrameUniforms(RenderKeyFrame& key)
-//{
-//	key.uniforms.clear();
-//	for (auto u : color->GetUniforms())
-//	{
-//		if (u->type == UniformType::FLOAT)
-//		{
-//			auto ptr = dynamic_cast<FloatUniform*>(u);
-//			key.uniforms.emplace_back(ptr, ptr->val);
-//		}
-//	}
-//}

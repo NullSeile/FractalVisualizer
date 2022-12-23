@@ -1,71 +1,10 @@
 #pragma once
 
 #include "FractalVisualizer.h"
+
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui_internal.h>
 #include <IconsMaterialDesign.h>
-
-ImVec2 operator+(const ImVec2& l, const ImVec2& r)
-{
-	return { l.x + r.x, l.y + r.y };
-}
-
-ImVec2 operator-(const ImVec2& l, const ImVec2& r)
-{
-	return { l.x - r.x, l.y - r.y };
-}
-
-ImVec2 operator*(const ImVec2& vec, float scalar)
-{
-	return { vec.x * scalar, vec.y * scalar };
-}
-
-ImVec2 operator/(const ImVec2& vec, float scalar)
-{
-	return { vec.x / scalar, vec.y / scalar };
-}
-
-std::ostream& operator<<(std::ostream& os, const ImVec2& vec)
-{
-	os << '(' << vec.x << ", " << vec.y << ')';
-	return os;
-}
-
-template<typename T>
-std::ostream& operator<<(std::ostream& os, const glm::vec<2, T>& vec)
-{
-	os << '(' << vec.x << ", " << vec.y << ')';
-	return os;
-}
-
-template<typename T>
-ImVec2 GlmToImVec(const glm::vec<2, T>& vec)
-{
-	return { (float)vec.x, (float)vec.y };
-}
-
-template<typename T>
-T map(const T& x, const T& x0, const T& x1, const T& y0, const T& y1)
-{
-	return y0 + ((y1 - y0) / (x1 - x0)) * (x - x0);
-}
-
-template<typename T>
-T sine_interp(const T& x)
-{
-	return -cos(M_PI * x) * 0.5 + 0.5;
-}
-
-template<typename T, typename S>
-T lerp(T a, T b, S t)
-{
-	return b * t + a * (S(1) - t);
-}
-
-template<typename T, typename S>
-T mult_interp(T a, T b, S t)
-{
-	return a * std::pow(b / a, t);
-}
 
 static bool SaveImageDialog(std::string& fileName)
 {
@@ -109,15 +48,20 @@ bool DragFloatR(const char* label, float* v, float v_default, float v_speed = 1.
 		value_changed = true;
 		*v = v_default;
 	}
-	ImGui::SameLine(0, style.ItemInnerSpacing.x);
-	ImGui::Text(label);
+
+	const char* label_end = ImGui::FindRenderedTextEnd(label);
+	if (label != label_end)
+	{
+		ImGui::SameLine(0, style.ItemInnerSpacing.x);
+		ImGui::TextEx(label, label_end);
+	}
 
 	ImGui::PopID();
 
 	return value_changed;
 }
 
-bool DragFloat2R(const char* label, float v[2], glm::vec2 v_default, float v_speed = 1.0f, float v_min = 0.0f, float v_max = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
+bool DragDoubleR(const char* label, double* v, double v_default, float v_speed = 1.0f, double v_min = 0.0f, double v_max = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
 {
 	ImGui::PushID(label);
 
@@ -127,7 +71,39 @@ bool DragFloat2R(const char* label, float v[2], glm::vec2 v_default, float v_spe
 	const float button_size = ImGui::GetFrameHeight();
 
 	ImGui::SetNextItemWidth(std::max(1.0f, ImGui::CalcItemWidth() - (button_size + style.ItemInnerSpacing.x)));
-	value_changed |= ImGui::DragFloat2("", v, v_speed, v_min, v_max, format, flags);
+	value_changed |= ImGui::DragScalar("", ImGuiDataType_Double, v, v_speed, &v_min, &v_max, format, flags);
+
+	ImGui::SameLine(0, style.ItemInnerSpacing.x);
+
+	if (ImGui::Button(RESET_CHAR, ImVec2(button_size, button_size)))
+	{
+		value_changed = true;
+		*v = v_default;
+	}
+
+	const char* label_end = ImGui::FindRenderedTextEnd(label);
+	if (label != label_end)
+	{
+		ImGui::SameLine(0, style.ItemInnerSpacing.x);
+		ImGui::TextEx(label, label_end);
+	}
+
+	ImGui::PopID();
+
+	return value_changed;
+}
+
+bool DragDouble2R(const char* label, double v[2], glm::dvec2 v_default, float v_speed = 1.0f, double v_min = 0.0, double v_max = 0.0, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
+{
+	ImGui::PushID(label);
+
+	ImGuiStyle style = ImGui::GetStyle();
+
+	bool value_changed = false;
+	const float button_size = ImGui::GetFrameHeight();
+
+	ImGui::SetNextItemWidth(std::max(1.0f, ImGui::CalcItemWidth() - (button_size + style.ItemInnerSpacing.x)));
+	value_changed |= ImGui::DragScalarN("", ImGuiDataType_Double, v, 2, v_speed, &v_min, &v_max, format, flags);
 
 	ImGui::SameLine(0, style.ItemInnerSpacing.x);
 
@@ -137,8 +113,13 @@ bool DragFloat2R(const char* label, float v[2], glm::vec2 v_default, float v_spe
 		v[0] = v_default.x;
 		v[1] = v_default.y;
 	}
-	ImGui::SameLine(0, style.ItemInnerSpacing.x);
-	ImGui::Text(label);
+
+	const char* label_end = ImGui::FindRenderedTextEnd(label);
+	if (label != label_end)
+	{
+		ImGui::SameLine(0, style.ItemInnerSpacing.x);
+		ImGui::TextEx(label, label_end);
+	}
 
 	ImGui::PopID();
 
@@ -166,8 +147,13 @@ bool ColorEdit3R(const char* label, float col[3], glm::vec3 default_col, ImGuiCo
 		col[1] = default_col.g;
 		col[2] = default_col.b;
 	}
-	ImGui::SameLine(0, style.ItemInnerSpacing.x);
-	ImGui::Text(label);
+
+	const char* label_end = ImGui::FindRenderedTextEnd(label);
+	if (label != label_end)
+	{
+		ImGui::SameLine(0, style.ItemInnerSpacing.x);
+		ImGui::TextEx(label, label_end);
+	}
 
 	ImGui::PopID();
 
@@ -193,8 +179,13 @@ bool ComboR(const char* label, int* current_item, int default_item, const char* 
 		value_changed = true;
 		*current_item = default_item;
 	}
-	ImGui::SameLine(0, style.ItemInnerSpacing.x);
-	ImGui::Text(label);
+
+	const char* label_end = ImGui::FindRenderedTextEnd(label);
+	if (label != label_end)
+	{
+		ImGui::SameLine(0, style.ItemInnerSpacing.x);
+		ImGui::TextEx(label, label_end);
+	}
 
 	ImGui::PopID();
 
@@ -256,40 +247,6 @@ void FractalHandleInteract(FractalVisualizer& fract, int resolutionPercentage)
 
 		if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && io.KeyCtrl)
 			fract.SetCenter(fract.MapCoordsToPos(mousePos));
-	}
-}
-
-void FractalHandleZoom(FractalVisualizer& fract, int resolutionPercentage, float fps, bool smoothZoom, SmoothZoomData& data)
-{
-	auto io = ImGui::GetIO();
-
-	if (ImGui::IsWindowHovered() && io.MouseWheel != 0)
-	{
-		data.start_radius = fract.GetRadius();
-		data.target_radius = data.target_radius / std::pow(1.1f, io.MouseWheel);
-		data.target_pos = WindowPosToImagePos(ImGui::GetMousePos(), resolutionPercentage);
-		data.t = 0.0;
-
-		if (!smoothZoom)
-			data.t = 1.0;
-		ZoomToScreenPos(fract, data.target_pos, data.target_radius);
-	}
-	if (smoothZoom)
-	{
-		if (data.t < 1.0)
-		{
-			data.t += 8.0 / fps;
-
-			if (data.t >= 1.0)
-				data.t = 1.0;
-
-			// (1 - a^x) / (1 - a)
-			double a = 0.025;
-			double t = (1.0 - std::pow(a, data.t)) / (1.0 - a);
-
-			double radius = data.start_radius * (1 - t) + data.target_radius * t;
-			ZoomToScreenPos(fract, data.target_pos, radius);
-		}
 	}
 }
 

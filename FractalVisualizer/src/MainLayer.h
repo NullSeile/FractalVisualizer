@@ -68,6 +68,8 @@ private:
 	bool m_ShouldUpdatePreview = true;
 	float m_PreviewT = 0.0;
 	bool m_PreviewMinimized = true;
+	int m_RenderColorIndex = 0;
+	FractalVisualizer& m_SelectedFractal;
 	VideoRenderer m_VideoRenderer;
 
 	std::vector<ColorPreview> m_ColorsPreview;

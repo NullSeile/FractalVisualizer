@@ -15,7 +15,7 @@ T map(const T& x, const T& x0, const T& x1, const T& y0, const T& y1)
 template<typename T>
 T sine_interp(const T& x)
 {
-	return -cos(M_PI * x) * 0.5 + 0.5;
+	return -(T)cos(M_PI * x) * (T)0.5 + (T)0.5;
 }
 
 template<typename T, typename S>
@@ -64,6 +64,8 @@ T Interpolate(const std::vector<std::shared_ptr<KeyFrame<T>>>& keyFrames, float 
 			return interp(*keyFrames[i], *keyFrames[i + 1], lt);
 		}
 	}
+	assert(false && "YO WTF?");
+	return T();
 }
 
 template<typename T, typename F>
@@ -100,6 +102,7 @@ void VideoRenderer::UpdateIter(float t)
 		return CenterInterp(resolution, GetRadius(a.t), new_radius, a, b, t);
 	};
 	auto new_center = Interpolate(centerKeyFrames, t, center_interp);
+	//auto new_center = InterpolateSimple(centerKeyFrames, t, lerp<glm::dvec2, double>);
 	fract->SetCenter(new_center);
 
 	for (auto& [u, keys] : uniformsKeyFrames)
@@ -124,7 +127,7 @@ void VideoRenderer::SetColorFunction(const std::shared_ptr<ColorFunction>& new_c
 			auto p = dynamic_cast<FloatUniform*>(u);
 			auto& keyFrames = uniformsKeyFrames.emplace_back();
 			keyFrames.first = p;
-			keyFrames.second.emplace_back(std::make_shared<KeyFrame<float>>(0.0, p->val));
+			keyFrames.second.emplace_back(std::make_shared<KeyFrame<float>>(0.f, p->val));
 		}
 	}
 }

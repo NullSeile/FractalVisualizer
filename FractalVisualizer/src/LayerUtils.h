@@ -6,6 +6,52 @@
 #include <imgui_internal.h>
 #include <IconsMaterialDesign.h>
 
+// A mess of button
+bool CloseButton(const char* label)
+{
+	ImGuiButtonFlags flags = ImGuiButtonFlags_None;
+	auto size_arg = ImVec2(0, 0);
+
+	ImGuiWindow* window = ImGui::GetCurrentWindow();
+	if (window->SkipItems)
+		return false;
+
+	ImGuiContext& g = *GImGui;
+	const ImGuiStyle& style = g.Style;
+	const ImGuiID id = window->GetID(label);
+	const ImVec2 label_size = ImGui::CalcTextSize("", NULL, true);
+
+	ImVec2 pos = window->DC.CursorPos;
+	if ((flags & ImGuiButtonFlags_AlignTextBaseLine) && style.FramePadding.y < window->DC.CurrLineTextBaseOffset) // Try to vertically align buttons that are smaller/have no padding so that text baseline matches (bit hacky, since it shouldn't be a flag)
+		pos.y += window->DC.CurrLineTextBaseOffset - style.FramePadding.y;
+	ImVec2 size = ImGui::CalcItemSize(size_arg, label_size.x + style.FramePadding.x * 2.0f, label_size.y + style.FramePadding.y * 2.0f);
+
+	const ImRect bb(pos, pos + size);
+	ImGui::ItemSize(size, style.FramePadding.y);
+	if (!ImGui::ItemAdd(bb, id))
+		return false;
+
+	if (g.LastItemData.InFlags & ImGuiItemFlags_ButtonRepeat)
+		flags |= ImGuiButtonFlags_Repeat;
+
+	bool hovered, held;
+	bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held, flags);
+
+	// Render (taken from ImGui::CloseButton())
+	ImU32 col = ImGui::GetColorU32(held ? ImGuiCol_ButtonActive : ImGuiCol_ButtonHovered);
+	ImVec2 center = bb.GetCenter();
+	if (hovered)
+		window->DrawList->AddCircleFilled(center, ImMax(2.0f, g.FontSize * 0.5f + 1.0f), col, 12);
+
+	float cross_extent = g.FontSize * 0.5f * 0.7071f - 1.0f;
+	ImU32 cross_col = ImGui::GetColorU32(ImGuiCol_Text);
+	center -= ImVec2(0.5f, 0.5f);
+	window->DrawList->AddLine(center + ImVec2(+cross_extent, +cross_extent), center + ImVec2(-cross_extent, -cross_extent), cross_col, 1.0f);
+	window->DrawList->AddLine(center + ImVec2(+cross_extent, -cross_extent), center + ImVec2(-cross_extent, +cross_extent), cross_col, 1.0f);
+
+	return pressed;
+}
+
 ImVec2 FitToScreen(const ImVec2& source, const ImVec2& screen)
 {
 	float wi = source.x;

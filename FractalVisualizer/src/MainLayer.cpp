@@ -19,6 +19,7 @@ MainLayer::MainLayer()
 	, m_Mandelbrot(m_MandelbrotSrcPath)
 	, m_JuliaSrcPath("assets/julia.glsl")
 	, m_Julia(m_JuliaSrcPath)
+	, m_SelectedFractal(m_Mandelbrot)
 {
 	RefreshColorFunctions();
 
@@ -39,7 +40,7 @@ MainLayer::MainLayer()
 	m_Mandelbrot.SetCenter({ -0.5, 0 });
 	m_Julia.SetRadius(1.3);
 
-	m_VideoRenderer.SetColorFunction(m_Colors[m_SelectedColor]);
+	m_VideoRenderer.SetColorFunction(m_Colors[m_RenderColorIndex]);
 	m_VideoRenderer.Prepare(m_MandelbrotSrcPath, m_Mandelbrot);
 
 	m_MandelbrotZoomData.start_radius = m_Mandelbrot.GetRadius();
@@ -116,7 +117,6 @@ void MainLayer::OnUpdate(GLCore::Timestep ts)
 			m_VideoRenderer.UpdateIter(m_PreviewT);
 			m_ShouldUpdatePreview = false;
 		}
-
 		break;
 	}
 	case State::Rendering:
@@ -165,7 +165,8 @@ void MainLayer::OnImGuiRender()
 	if (ImGui::IsKeyPressed(ImGuiKey_S))
 		m_ShowStyle = !m_ShowStyle;
 
-#ifdef GLCORE_DEBUG
+#if 1
+//#ifdef GLCORE_DEBUG
 	if (m_ShowDemo)
 		ImGui::ShowDemoWindow(&m_ShowDemo);
 
@@ -615,38 +616,37 @@ void SortKeyFrames(std::vector<std::shared_ptr<KeyFrame<T>>>& keyFrames)
 }
 
 template<typename T>
-bool EditKeyFrames(std::vector<std::shared_ptr<KeyFrame<T>>>& keyFrames, T new_val, std::function<bool(T&)> value_edit)
+bool EditKeyFrames(std::vector<std::shared_ptr<KeyFrame<T>>>& keyFrames, T new_val, float new_t, std::function<bool(T&)> value_edit)
 {
-	bool changed = false;
-
-	const float button_size = ImGui::GetFrameHeight();
-	if (ImGui::Button("-", ImVec2(button_size, button_size)))
-		if (keyFrames.size() > 1)
-		{
-			keyFrames.pop_back();
-			changed = true;
-		}
+	bool val_changed = false;
+	bool edited_time = false;
 
 	ImGui::SameLine();
-
-	if (ImGui::Button("+", ImVec2(button_size, button_size)))
+	if (ImGui::SmallButton("+"))
 	{
-		keyFrames.emplace_back(std::make_shared<KeyFrame<T>>(1.f, new_val));
-		changed = true;
+		keyFrames.emplace_back(std::make_shared<KeyFrame<T>>(new_t, new_val));
+		edited_time = true;
+		val_changed = true;
 	}
 
-	bool edited_time = false;
-	for (auto& key : keyFrames)
+	int deleted_index = -1;
+	for (int i = 0; i < keyFrames.size(); i++)
 	{
-		auto& [t, v] = *key;
+		auto& [t, v] = *(keyFrames[i]);
 
-		ImGui::PushID(key.get());
+		ImGui::PushID(keyFrames[i].get());
+
+		if (CloseButton("##close"))
+			deleted_index = i;
+
+		ImGui::SameLine();
+
 		ImGui::PushItemWidth(ImGui::CalcItemWidth() * 0.25f);
 
 		if (ImGui::DragFloat("##time", &t, 0.01f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
 		{
 			edited_time = true;
-			changed = true;
+			val_changed = true;
 		}
 
 		ImGui::PopItemWidth();
@@ -654,7 +654,7 @@ bool EditKeyFrames(std::vector<std::shared_ptr<KeyFrame<T>>>& keyFrames, T new_v
 		ImGui::PushItemWidth(ImGui::CalcItemWidth() * 0.75f);
 
 		if (value_edit(v))
-			changed = true;
+			val_changed = true;
 
 		ImGui::PopItemWidth();
 
@@ -663,13 +663,16 @@ bool EditKeyFrames(std::vector<std::shared_ptr<KeyFrame<T>>>& keyFrames, T new_v
 	if (edited_time)
 		SortKeyFrames(keyFrames);
 
-	return changed;
+	if (deleted_index >= 0)
+		if (keyFrames.size() > 1)
+			keyFrames.erase(keyFrames.begin() + deleted_index);
+
+	return val_changed;
 }
 
 void MainLayer::ShowRenderWindow()
 {
-	m_PreviewMinimized = !ImGui::Begin("Rendering");
-	if (!m_PreviewMinimized)
+	if (ImGui::Begin("Rendering"))
 	{
 		if (ImGui::CollapsingHeader("Image"))
 		{
@@ -726,9 +729,10 @@ void MainLayer::ShowRenderWindow()
 			ImGui::PushID("Video");
 
 			auto& data = m_VideoRenderer;
+			auto& fract = m_SelectedFractal;
 
 			//bool rendering_video = m_State == State::Rendering;
-			if (ImGui::BeginPopupModal("Rendering Video"))
+			if (ImGui::BeginPopupModal("Rendering Video", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 			{
 				ImGui::ProgressBar(data.current_iter / (float)data.steps, { 200, 0 });
 
@@ -740,13 +744,12 @@ void MainLayer::ShowRenderWindow()
 
 			const char* fractal_names[] = { "Mandelbrot", "Julia" };
 			static int fractal_index = 0;
-			auto& fract = fractal_index == 0 ? m_Mandelbrot : m_Julia;
 			if (ImGui::Combo("Fractal", &fractal_index, fractal_names, IM_ARRAYSIZE(fractal_names)))
 			{
 				fract = fractal_index == 0 ? m_Mandelbrot : m_Julia;
 				const auto& path = fractal_index == 0 ? m_MandelbrotSrcPath : m_JuliaSrcPath;
 				data.Prepare(path, fract);
-
+				m_ShouldUpdatePreview = true;
 			}
 
 			if (ImGui::InputInt2("Resolution", glm::value_ptr(data.resolution)))
@@ -759,18 +762,17 @@ void MainLayer::ShowRenderWindow()
 			if (ImGui::DragInt("Steps per frame", &data.steps_per_frame, 1, 100))
 				m_ShouldUpdatePreview = true;
 
-			static int color_index = (int)m_SelectedColor;
-			if (ComboR("Color Function", &color_index, (int)m_SelectedColor, m_ColorsName.data(), (int)m_ColorsName.size()))
+			if (ComboR("Color Function", &m_RenderColorIndex, (int)m_SelectedColor, m_ColorsName.data(), (int)m_ColorsName.size()))
 			{
-				data.SetColorFunction(m_Colors[color_index]);
+				data.SetColorFunction(m_Colors[m_RenderColorIndex]);
 				m_ShouldUpdatePreview = true;
 			}
 
 			if (ImGui::TreeNode("Animation"))
 			{
-				if (ImGui::TreeNode("Radius"))
+				if (ImGui::TreeNodeEx("Radius", ImGuiTreeNodeFlags_AllowItemOverlap))
 				{
-					if (EditKeyFrames<double>(data.radiusKeyFrames, fract.GetRadius(), [&fract](double& r)
+					if (EditKeyFrames<double>(data.radiusKeyFrames, fract.GetRadius(), m_PreviewT, [&fract](double& r)
 						{
 							return DragDoubleR("##radius", &r, fract.GetRadius(), 0.01f, 1e-15, 50, "%e", ImGuiSliderFlags_Logarithmic);
 						}))
@@ -778,9 +780,9 @@ void MainLayer::ShowRenderWindow()
 
 					ImGui::TreePop();
 				}
-				if (ImGui::TreeNode("Center"))
+				if (ImGui::TreeNodeEx("Center", ImGuiTreeNodeFlags_AllowItemOverlap))
 				{
-					if (EditKeyFrames<glm::dvec2>(data.centerKeyFrames, fract.GetCenter(), [&fract](glm::dvec2& c)
+					if (EditKeyFrames<glm::dvec2>(data.centerKeyFrames, fract.GetCenter(), m_PreviewT, [&fract](glm::dvec2& c)
 						{
 							return DragDouble2R("##center", glm::value_ptr(c), fract.GetCenter(), (float)fract.GetRadius() / 70.f, -2.0, 2.0, "%.15f");
 						}))
@@ -788,15 +790,23 @@ void MainLayer::ShowRenderWindow()
 
 					ImGui::TreePop();
 				}
-				if (ImGui::TreeNode("Uniforms"))
+				if (ImGui::TreeNodeEx("Uniforms", ImGuiTreeNodeFlags_AllowItemOverlap))
 				{
 					for (auto& [u, keys] : data.uniformsKeyFrames)
 					{
 						if (ImGui::TreeNode(u->name.c_str()))
 						{
-							if (EditKeyFrames<float>(keys, 1.f, [u](float& v)
+							const auto& color = m_Colors[m_SelectedColor];
+							float new_val = 1.f;
+							if (data.color->GetName() == color->GetName())
+							{
+								auto it = std::find_if(color->GetUniforms().begin(), color->GetUniforms().end(), [u](Uniform* p) { return p->name == u->name; });
+								if (it != color->GetUniforms().end())
+									new_val = ((FloatUniform*)*it)->val;
+							}
+							if (EditKeyFrames<float>(keys, new_val, m_PreviewT, [u, new_val](float& v)
 								{
-									return ImGui::DragFloat("##val", &v, u->speed);
+									return DragFloatR("##val", &v, new_val, u->speed);
 								}))
 								m_ShouldUpdatePreview = true;
 
@@ -811,8 +821,7 @@ void MainLayer::ShowRenderWindow()
 
 			if (ImGui::Button("Render Video"))
 			{
-				//data.fileName = std::format("{}_{:.15f},{:.15f}", fractal_names[fractal_index], data.keyFrames.back().center.x, data.keyFrames.back().center.y);
-				data.fileName = "nye";
+				data.fileName = std::format("{}_{:.15f},{:.15f}", fractal_names[fractal_index], data.centerKeyFrames.back()->val.x, data.centerKeyFrames.back()->val.y);
 				if (GLCore::Application::Get().GetWindow().SaveFileDialog("mp4 (*.mp4)\0*.mp4\0", data.fileName))
 				{
 					m_State = State::Rendering;
@@ -858,12 +867,12 @@ void MainLayer::ShowRenderWindow()
 
 void MainLayer::ShowPreviewWindow()
 {
-	if (ImGui::Begin("Render Preview"))
+	m_PreviewMinimized = !ImGui::Begin("Render Preview");
+	if (!m_PreviewMinimized)
 	{
 		auto& data = m_VideoRenderer;
-		auto& style = ImGui::GetStyle();
 
-		ImGui::BeginChild("img", { 0, -(ImGui::GetFrameHeight() + style.ItemSpacing.y) });
+		ImGui::BeginChild("img", { 0, -ImGui::GetFrameHeightWithSpacing() });
 
 		ImVec2 avail = ImGui::GetContentRegionAvail();
 		ImVec2 img_size = FitToScreen({ (float)data.resolution.x, (float)data.resolution.y }, avail);
@@ -879,6 +888,27 @@ void MainLayer::ShowPreviewWindow()
 
 		if (ImGui::SliderFloat("##preview_percent", &m_PreviewT, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
 			m_ShouldUpdatePreview = true;
+
+		ImGui::SameLine();
+
+		if (ImGui::Button("Apply To Fract"))
+		{
+			auto& fract = m_SelectedFractal;
+
+			fract.SetCenter(data.fract->GetCenter());
+			fract.SetRadius(data.fract->GetRadius());
+
+			auto color = m_Colors[m_RenderColorIndex];
+			fract.SetColorFunction(color);
+
+			for (int i = 0; i < color->GetUniforms().size(); i++)
+			{
+				auto dest = (FloatUniform*)color->GetUniforms()[i];
+				auto source = (FloatUniform*)data.color->GetUniforms()[i];
+
+				dest->val = source->val;
+			}
+		}
 	}
 	ImGui::End();
 }

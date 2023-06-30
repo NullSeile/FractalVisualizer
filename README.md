@@ -26,7 +26,7 @@ You can also add uniforms which will be visible and editable in the UI. To do th
 
 - **Float:** `#uniform float <name> <default_value> <slider_increment> <min> <max>;`. Either min or max can be set to `NULL` to indicate it is unbounded.
 - **Boolean:** `#uniform bool <name> <default_value>;`. The default value must be either `true` or `false`.
-- **Color:** `#uniform color <default_red> <default_green> <default_blue>;`. The RGB values must be between 0 and 1.
+- **Color:** `#uniform color <name> <default_red> <default_green> <default_blue>;`. The RGB values must be between 0 and 1.
 
 Additionaly, all types accept an optional boolean parameter at the end (defaults to `true`) which indicates whether this parameter should update the preview image.
 

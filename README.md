@@ -1,6 +1,17 @@
 # Fractal visualizer
 WIP fractal visualizer build on top of https://github.com/TheCherno/OpenGL.
 
+## Showcase
+
+![screenshot01](https://github.com/NullSeile/FractalVisualizer/assets/18171867/c2aef8cf-f262-4f50-a41b-d27d8e4f17c0)
+
+https://github.com/NullSeile/FractalVisualizer/assets/18171867/1d29cdc4-1ddd-428f-8677-437b5257a015
+
+https://github.com/NullSeile/FractalVisualizer/assets/18171867/712bb0b8-31e3-4ade-98a7-d899ac054eb9
+
+https://github.com/NullSeile/FractalVisualizer/assets/18171867/a635ad88-aacd-48b5-a676-33297f6f6acd
+
+
 ## Main functionality
 
 - You can pan and zoom by dragging and using the mouse wheel.

@@ -1,5 +1,5 @@
-#uniform float colorMult 100 1 1 NULL false;
-#uniform float offset 0 0.02 -1 1;
+#uniform float colorMult "Scale" 100 1 1 NULL false;
+#uniform float offset "Offset" 0 0.02 -1 1;
 #define PI 3.1415926535
 vec3 get_color(float i)
 {

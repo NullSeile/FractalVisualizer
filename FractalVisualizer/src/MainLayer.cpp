@@ -417,17 +417,17 @@ void MainLayer::ShowControlsWindow()
 			{
 			case UniformType::FLOAT: {
 				auto u = dynamic_cast<FloatUniform*>(uniform);
-				modified = DragFloatR(u->name.c_str(), &u->val, u->speed, u->range.x, u->range.y, u->default_val);
+				modified = DragFloatR(u->displayName.c_str(), &u->val, u->speed, u->range.x, u->range.y, u->default_val);
 				break;
 			}
 			case UniformType::COLOR: {
 				auto u = dynamic_cast<ColorUniform*>(uniform);
-				modified = ColorEdit3R(u->name.c_str(), glm::value_ptr(u->color), u->default_color);
+				modified = ColorEdit3R(u->displayName.c_str(), glm::value_ptr(u->color), u->default_color);
 				break;
 			}
 			case UniformType::BOOL: {
 				auto u = dynamic_cast<BoolUniform*>(uniform);
-				modified = ImGui::Checkbox(u->name.c_str(), &u->val);
+				modified = ImGui::Checkbox(u->displayName.c_str(), &u->val);
 				break;
 			}
 			default: {

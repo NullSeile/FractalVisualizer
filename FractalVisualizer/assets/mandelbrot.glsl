@@ -12,6 +12,7 @@ uniform uvec2 i_Size;
 uniform dvec2 i_xRange;
 uniform dvec2 i_yRange;
 uniform uint i_ItersPerFrame;
+uniform vec3 i_SetColor;
 uniform uint i_Frame;
 uniform uint i_MaxEpochs;
 uniform uint i_FadeThreshold;
@@ -37,6 +38,7 @@ dvec2 mandelbrot(dvec2 z, dvec2 c)
 void main()
 {
     // Outside information
+    vec4 clear_color = vec4(0.0, 0.0, 0.0, 0.0);
     dvec2 z;
     uint epoch;
     uint iters;
@@ -45,6 +47,7 @@ void main()
         z = dvec2(0, 0);
         epoch = 0;
         iters = 0;
+        clear_color = vec4(i_SetColor, 1);
     }
     else
     {
@@ -84,7 +87,7 @@ void main()
     {
         o_Data = uvec4(unpackDouble2x32(z.x), unpackDouble2x32(z.y));
         o_Iter = uvec2(epoch, iters + i);
-        o_Color = vec4(0.0, 0.0, 0.0, 1e-10);
+        o_Color = clear_color;
     }
     else
     {

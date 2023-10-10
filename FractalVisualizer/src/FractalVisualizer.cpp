@@ -72,6 +72,9 @@ void FractalVisualizer::Update()
 	location = glGetUniformLocation(m_Shader, "i_ItersPerFrame");
 	glUniform1ui(location, m_IterationsPerFrame);
 
+	location = glGetUniformLocation(m_Shader, "i_SetColor");
+	glUniform3f(location, m_SetColor.r, m_SetColor.g, m_SetColor.b);
+
 	location = glGetUniformLocation(m_Shader, "i_Frame");
 	glUniform1ui(location, m_Frame);
 
@@ -203,6 +206,12 @@ void FractalVisualizer::SetColorFunction(const std::shared_ptr<ColorFunction>& c
 void FractalVisualizer::SetIterationsPerFrame(int iterationsPerFrame)
 {
 	m_IterationsPerFrame = iterationsPerFrame;
+	ResetRender();
+}
+
+void FractalVisualizer::SetSetColor(const glm::vec3& setColor)
+{
+	m_SetColor = setColor;
 	ResetRender();
 }
 

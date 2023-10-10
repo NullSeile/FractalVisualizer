@@ -24,6 +24,9 @@ public:
 
 	void SetShader(const std::string& shaderSrcPath);
 
+	void SetSetColor(const glm::vec3& setColor);
+	glm::vec3 GetSetColor() const { return m_SetColor; };
+
 	void SetColorFunction(const std::shared_ptr<ColorFunction>& colorFunc);
 
 	void SetIterationsPerFrame(int iterationsPerFrame);
@@ -63,6 +66,7 @@ private:
 
 	glm::uvec2 m_Size = { 1, 1 };
 	int m_IterationsPerFrame = 100;
+	glm::vec3 m_SetColor = { 0.f, 0.f, 0.f };
 	int m_MaxEpochs = 0;
 	int m_Frame = 0;
 	bool m_SmoothColor = false;

@@ -28,6 +28,9 @@ MainLayer::MainLayer()
 	m_Mandelbrot.SetColorFunction(m_Colors[m_SelectedColor]);
 	m_Julia.SetColorFunction(m_Colors[m_SelectedColor]);
 
+	m_Mandelbrot.SetSetColor(m_SetColor);
+	m_Julia.SetSetColor(m_SetColor);
+
 	m_Mandelbrot.SetIterationsPerFrame(m_ItersPerSteps);
 	m_Julia.SetIterationsPerFrame(m_ItersPerSteps);
 
@@ -277,6 +280,12 @@ void MainLayer::ShowControlsWindow()
 
 			glm::uvec2 juliaSize = (glm::vec2)m_Mandelbrot.GetSize() * (m_ResolutionPercentage / 100.f);
 			m_Julia.SetSize(juliaSize);
+		}
+
+		if (ImGui::ColorEdit3("Set Color", glm::value_ptr(m_SetColor))) 
+		{
+			m_Mandelbrot.SetSetColor(m_SetColor);
+			m_Julia.SetSetColor(m_SetColor);
 		}
 
 		// If unlimited epochs is checked, set m_MaxEpochs to 0 but keep the slider value to the previous value

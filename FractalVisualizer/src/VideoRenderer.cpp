@@ -2,8 +2,6 @@
 
 #define _USE_MATH_DEFINES
 #include <math.h>
-
-#define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui_internal.h>
 
 template<typename T>
@@ -31,7 +29,6 @@ T mult_interp(T a, T b, S t)
 }
 
 static inline ImVec2 operator*(const float scalar, const ImVec2& vec) { return vec * scalar; }
-static inline ImVec2 operator-(const ImVec2& vec) { return ImVec2(-vec.x, -vec.y); }
 
 void VideoRenderer::Prepare(const std::string& path, const FractalVisualizer& other)
 {

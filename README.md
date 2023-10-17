@@ -1,6 +1,17 @@
 # Fractal visualizer
 WIP fractal visualizer build on top of https://github.com/TheCherno/OpenGL.
 
+## Showcase
+
+![screenshot01](https://github.com/NullSeile/FractalVisualizer/assets/18171867/c2aef8cf-f262-4f50-a41b-d27d8e4f17c0)
+
+https://github.com/NullSeile/FractalVisualizer/assets/18171867/1d29cdc4-1ddd-428f-8677-437b5257a015
+
+https://github.com/NullSeile/FractalVisualizer/assets/18171867/712bb0b8-31e3-4ade-98a7-d899ac054eb9
+
+https://github.com/NullSeile/FractalVisualizer/assets/18171867/a635ad88-aacd-48b5-a676-33297f6f6acd
+
+
 ## Main functionality
 
 - You can pan and zoom by dragging and using the mouse wheel.
@@ -24,9 +35,9 @@ This function takes the number of iterations a point lasted before diverging and
 
 You can also add uniforms which will be visible and editable in the UI. To do this you add the preprocessor statement `#uniform`. There are the following types of uniforms:
 
-- **Float:** `#uniform float <name> <default_value> <slider_increment> <min> <max>;`. Either min or max can be set to `NULL` to indicate it is unbounded.
-- **Boolean:** `#uniform bool <name> <default_value>;`. The default value must be either `true` or `false`.
-- **Color:** `#uniform color <default_red> <default_green> <default_blue>;`. The RGB values must be between 0 and 1.
+- **Float:** `#uniform float <name> <display_name> <default_value> <slider_increment> <min> <max>;`. Either min or max can be set to `NULL` to indicate it is unbounded.
+- **Boolean:** `#uniform bool <name> <display_name> <default_value>;`. The default value must be either `true` or `false`.
+- **Color:** `#uniform color <name> <display_name> <default_red> <default_green> <default_blue>;`. The RGB values must be between 0 and 1.
 
 Additionaly, all types accept an optional boolean parameter at the end (defaults to `true`) which indicates whether this parameter should update the preview image.
 

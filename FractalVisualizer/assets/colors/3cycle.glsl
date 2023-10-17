@@ -1,9 +1,9 @@
-#uniform float colorMult 100 1 1 NULL false;
-#uniform float offset 0 0.01 -1 1;
-#uniform color c1 0.07 0.14 0.25;
-#uniform color c2 0.72 0.91 0.83;
-#uniform color c3 0.92 0.58 0.44;
-#uniform bool sine_interp true;
+#uniform float colorMult "Scale" 100 1 1 NULL false;
+#uniform float offset "Offset" 0 0.01 -1 1;
+#uniform color c1 "1" 0.07 0.14 0.25;
+#uniform color c2 "2" 0.72 0.91 0.83;
+#uniform color c3 "3" 0.92 0.58 0.44;
+#uniform bool sine_interp "Use sine interpolation" true;
 
 #define PI 3.1415926535
 vec3 colors[] = vec3[](c1, c2, c3, c1);

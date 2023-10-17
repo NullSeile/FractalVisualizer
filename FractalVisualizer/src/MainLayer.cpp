@@ -28,6 +28,9 @@ MainLayer::MainLayer()
 	m_Mandelbrot.SetColorFunction(m_Colors[m_SelectedColor]);
 	m_Julia.SetColorFunction(m_Colors[m_SelectedColor]);
 
+	m_Mandelbrot.SetSetColor(m_SetColor);
+	m_Julia.SetSetColor(m_SetColor);
+
 	m_Mandelbrot.SetIterationsPerFrame(m_ItersPerSteps);
 	m_Julia.SetIterationsPerFrame(m_ItersPerSteps);
 
@@ -338,6 +341,12 @@ void MainLayer::ShowControlsWindow()
 				m_Julia.SetSize(juliaSize);
 			}
 
+			if (ImGui::ColorEdit3("Set Color", glm::value_ptr(m_SetColor))) 
+			{
+				m_Mandelbrot.SetSetColor(m_SetColor);
+				m_Julia.SetSetColor(m_SetColor);
+			}
+
 			// If unlimited epochs is checked, set m_MaxEpochs to 0 but keep the slider value to the previous value
 			static bool limitEpochs = m_MaxEpochs != 0;
 			static int max_epochs = limitEpochs ? m_MaxEpochs : 100;
@@ -476,17 +485,17 @@ void MainLayer::ShowControlsWindow()
 				{
 				case UniformType::FLOAT: {
 					auto u = dynamic_cast<FloatUniform*>(uniform);
-					modified = DragFloatR(u->name.c_str(), &u->val, u->default_val, u->speed, u->range.x, u->range.y);
+					modified = DragFloatR(u->displayName.c_str(), &u->val, u->default_val, u->speed, u->range.x, u->range.y);
 					break;
 				}
 				case UniformType::COLOR: {
 					auto u = dynamic_cast<ColorUniform*>(uniform);
-					modified = ColorEdit3R(u->name.c_str(), glm::value_ptr(u->color), u->default_color);
+					modified = ColorEdit3R(u->displayName.c_str(), glm::value_ptr(u->color), u->default_color);
 					break;
 				}
 				case UniformType::BOOL: {
 					auto u = dynamic_cast<BoolUniform*>(uniform);
-					modified = ImGui::Checkbox(u->name.c_str(), &u->val);
+					modified = ImGui::Checkbox(u->displayName.c_str(), &u->val);
 					break;
 				}
 				default: {
@@ -805,7 +814,7 @@ void MainLayer::ShowRenderWindow()
 				{
 					for (auto& [u, keys] : data.uniformsKeyFrames)
 					{
-						if (ImGui::TreeNodeEx(u->name.c_str(), ImGuiTreeNodeFlags_AllowItemOverlap))
+						if (ImGui::TreeNodeEx(u->displayName.c_str(), ImGuiTreeNodeFlags_AllowItemOverlap))
 						{
 							const auto& color = m_Colors[m_SelectedColor];
 							float new_val = 1.f;

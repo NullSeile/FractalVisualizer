@@ -17,8 +17,11 @@ ColorFunction::ColorFunction(const std::string& src, const std::string& name)
 		Uniform* uniform = nullptr;
 		std::string uniform_glsl_text;
 
-		std::string type, name;
-		ss >> type >> name;
+		std::string type, name, displayName;
+		ss >> type >> name >> std::quoted(displayName);
+
+		//LOG_INFO("{1} - {0}", ss.str(), displayName);
+
 		if (type == "float")
 		{
 			uniform_glsl_text = "uniform float " + name;
@@ -31,7 +34,7 @@ ColorFunction::ColorFunction(const std::string& src, const std::string& name)
 			range.x = (min_s == "NULL" ? -FLT_MAX : std::stof(min_s));
 			range.y = (max_s == "NULL" ? FLT_MAX : std::stof(max_s));
 
-			uniform = new FloatUniform(name, range, val, speed, true);
+			uniform = new FloatUniform(name, displayName, range, val, speed, true);
 		}
 		else if (type == "color")
 		{
@@ -40,7 +43,7 @@ ColorFunction::ColorFunction(const std::string& src, const std::string& name)
 			glm::vec3 def_color;
 			ss >> def_color.r >> def_color.g >> def_color.b;
 
-			uniform = new ColorUniform(name, def_color, true);
+			uniform = new ColorUniform(name, displayName, def_color, true);
 		}
 		else if (type == "bool")
 		{
@@ -49,7 +52,7 @@ ColorFunction::ColorFunction(const std::string& src, const std::string& name)
 			bool def_val;
 			ss >> std::boolalpha >> def_val;
 
-			uniform = new BoolUniform(name, def_val, true);
+			uniform = new BoolUniform(name, displayName, def_val, true);
 		}
 		else
 		{

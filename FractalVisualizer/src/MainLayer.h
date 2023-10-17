@@ -56,6 +56,7 @@ private:
 
 	float m_FrameRate = 0;
 	int m_ResolutionPercentage = 100;
+	glm::vec3 m_SetColor = { 0.f, 0.f, 0.f };
 	int m_ItersPerSteps = 100;
 	int m_StepsPerFrame = 1;
 	int m_MaxEpochs = 100;

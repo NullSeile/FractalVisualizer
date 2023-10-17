@@ -786,15 +786,26 @@ void MainLayer::ShowRenderWindow()
 						{
 							return DragDouble2R("##center", glm::value_ptr(c), fract.GetCenter(), (float)fract.GetRadius() / 70.f, -2.0, 2.0, "%.15f");
 						}))
+					{
 						m_ShouldUpdatePreview = true;
+						LOG_INFO("{");
+						for (auto c : data.centerKeyFrames)
+							LOG_INFO("  ({}, ui::Vec2f{{{}, {}}}),", c->t, c->val.x, c->val.y);
+						LOG_INFO("}");
+
+						LOG_INFO("{");
+						for (auto c : data.radiusKeyFrames)
+							LOG_INFO("  ({}, {}),", c->t, c->val);
+						LOG_INFO("}");
+					}
 
 					ImGui::TreePop();
 				}
-				if (ImGui::TreeNodeEx("Uniforms", ImGuiTreeNodeFlags_AllowItemOverlap))
+				if (ImGui::TreeNode("Uniforms"))
 				{
 					for (auto& [u, keys] : data.uniformsKeyFrames)
 					{
-						if (ImGui::TreeNode(u->name.c_str()))
+						if (ImGui::TreeNodeEx(u->name.c_str(), ImGuiTreeNodeFlags_AllowItemOverlap))
 						{
 							const auto& color = m_Colors[m_SelectedColor];
 							float new_val = 1.f;
@@ -813,6 +824,17 @@ void MainLayer::ShowRenderWindow()
 							ImGui::TreePop();
 						}
 					}
+					ImGui::TreePop();
+				}
+				if (ImGui::TreeNode("Jula C"))
+				{
+					double min = -2, max = 2;
+					if (DragDoubleR("Amplitude", &data.cAmplitude, 1e-3, 0.01f, 1e-15, 50, "%e", ImGuiSliderFlags_Logarithmic))
+						m_ShouldUpdatePreview = true;
+					
+					if (DragDouble2R("Jula C Center", glm::value_ptr(data.cCenter), m_JuliaC, (float)fract.GetRadius() / 70.f, -2.0, 2.0, "%.15f"))
+						m_ShouldUpdatePreview = true;
+
 					ImGui::TreePop();
 				}
 

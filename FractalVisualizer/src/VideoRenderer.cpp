@@ -28,6 +28,12 @@ T mult_interp(T a, T b, S t)
 	return a * std::pow(b / a, t);
 }
 
+template<typename T, typename S>
+T sin_mult_interp(T a, T b, S t)
+{
+	return mult_interp(a, b, sine_interp(t));
+}
+
 static inline ImVec2 operator*(const float scalar, const ImVec2& vec) { return vec * scalar; }
 
 void VideoRenderer::Prepare(const std::string& path, const FractalVisualizer& other)
@@ -77,17 +83,59 @@ T InterpolateSimple(const KeyFrameList<T>& keyFrames, float t, F interp)
 template<typename T, typename S>
 T CatmullRom(const KeyFrame<T>& p0, const KeyFrame<T>& p1, const KeyFrame<T>& p2, const KeyFrame<T>& p3, S t)
 {
-	float t0 = p0.t;
-	float t1 = p1.t;
-	float t2 = p2.t;
-	float t3 = p3.t;
-	T A1 = (t1 - t) / (t1 - t0) * p0.val + (t - t0) / (t1 - t0) * p1.val;
-	T A2 = (t2 - t) / (t2 - t1) * p1.val + (t - t1) / (t2 - t1) * p2.val;
-	T A3 = (t3 - t) / (t3 - t2) * p2.val + (t - t2) / (t3 - t2) * p3.val;
-	T B1 = (t2 - t) / (t2 - t0) * A1 + (t - t0) / (t2 - t0) * A2;
-	T B2 = (t3 - t) / (t3 - t1) * A2 + (t - t1) / (t3 - t1) * A3;
-	T C = (t2 - t) / (t2 - t1) * B1 + (t - t1) / (t2 - t1) * B2;
-	return C;
+	t -= p1.t;
+	const S t1 = p2.t - p1.t;
+
+	const T& r0 = p0.val;
+	const T& r1 = p1.val;
+	const T& r2 = p2.val;
+	const T& r3 = p3.val;
+
+	const T a = -((r0 + r1 - r2 - r3) * t1 - S(4) * r1 + S(4) * r2) / (S(2) * t1 * t1 * t1);
+	const T b = ((S(2) * r0 + r1 - S(2) * r2 - r3) * t1 - S(6) * r1 + S(6) * r2) / (S(2) * t1 * t1);
+	const T c = (r2 - r0) / S(2);
+	const T d = r1;
+
+	return a * t * t * t + b * t * t + c * t + d;
+}
+
+template<typename T, typename S>
+T CatmullRomDiff(const KeyFrame<T>& p0, const KeyFrame<T>& p1, const KeyFrame<T>& p2, const KeyFrame<T>& p3, S t)
+{
+	t -= p1.t;
+	const S t1 = p2.t - p1.t;
+
+	const T& r0 = p0.val;
+	const T& r1 = p1.val;
+	const T& r2 = p2.val;
+	const T& r3 = p3.val;
+
+	const T a = -((r0 + r1 - r2 - r3) * t1 - S(4) * r1 + S(4) * r2) / (S(2) * t1 * t1 * t1);
+	const T b = ((S(2) * r0 + r1 - S(2) * r2 - r3) * t1 - S(6) * r1 + S(6) * r2) / (S(2) * t1 * t1);
+	const T c = (r2 - r0) / S(2);
+	//const T d = r1;
+
+	return S(3) * a * t * t + S(2) * b * t + c;
+}
+
+template<typename T, typename S>
+T LogCatmullRom(KeyFrame<T> p0, KeyFrame<T> p1, KeyFrame<T>& p2, KeyFrame<T> p3, S t)
+{
+	p0.val = std::log(p0.val);
+	p1.val = std::log(p1.val);
+	p2.val = std::log(p2.val);
+	p3.val = std::log(p3.val);
+	return std::exp(CatmullRom(p0, p1, p2, p3, t));
+}
+
+template<typename T, typename S>
+T LogCatmullRomDiff(KeyFrame<T> p0, KeyFrame<T> p1, KeyFrame<T>& p2, KeyFrame<T> p3, S t)
+{
+	p0.val = std::log(p0.val);
+	p1.val = std::log(p1.val);
+	p2.val = std::log(p2.val);
+	p3.val = std::log(p3.val);
+	return std::exp(CatmullRom(p0, p1, p2, p3, t)) * CatmullRomDiff(p0, p1, p2, p3, t);
 }
 
 template<typename T, typename S>
@@ -103,6 +151,68 @@ T Hermite(const KeyFrame<T>& p0, const KeyFrame<T>& p1, const T& v0, const T& v1
 
 	return a * t * t * t + b * t * t + c * t + d;
 }
+
+glm::dvec2 HermiteRD(const KeyFrame<glm::dvec2>& p0, const KeyFrame<glm::dvec2>& p1, const glm::dvec2& v0, const glm::dvec2& v1, double t, double dr0_ = 0.0, double dr1_ = 0.0)
+{
+	t = t - p0.t;
+	double t1 = p1.t - p0.t;
+
+	glm::dvec2 dr0 = glm::dvec2(dr0_);
+	glm::dvec2 dr1 = glm::dvec2(dr1_);
+
+	glm::dvec2 a = (t1 * (v0 + v1 - dr0 - dr1) + 2.0 * (p0.val - p1.val)) / (t1 * t1 * t1);
+	glm::dvec2 b = -(t1 * (2.0 * (v0 - dr0) + v1 - dr1) + 3.0 * (p0.val - p1.val)) / (t1 * t1);
+	glm::dvec2 c = v0 - dr0;
+	glm::dvec2 d = p0.val;
+
+	return a * t * t * t + b * t * t + c * t + d;
+}
+
+//template<typename T, typename S>
+glm::dvec2 CDHermite(const KeyFrame<glm::dvec2>& p0, const KeyFrame<glm::dvec2>& p1, const glm::dvec2& v0, const glm::dvec2& v1, double r, double t, double dr0 = 0.0, double dr1 = 0.0)
+{
+	if (r == 1.0)
+		return HermiteRD(p0, p1, v0, v1, t, dr0, dr1);
+	
+	t = t - p0.t;
+	double t1 = p1.t - p0.t;
+
+	glm::dvec2 a = ((r * r - r) * t1 * v0 + (r - 1) * t1 * v1 + 2.0 * (p0.val - p1.val) * r * log(r) - (r-1.0)*t1*dr1 - (r*r * 2.0 * dr0 - r * dr0)*t1) / (r * t1 * t1 * t1 * log(r));
+	glm::dvec2 b = -(2.0 * (r * r - r) * t1 * v0 + (r - 1) * t1 * v1 + 3.0 * (p0.val - p1.val) * r * log(r) - (r-1.0)*t1*dr1 - 2.0 * (r*r * dr0 - r * dr0)*t1) / (r * t1 * t1 * log(r));
+	glm::dvec2 c = ((r - 1.0) * v0 - r * dr0 + dr0) / log(r);
+	glm::dvec2 d = p0.val;
+
+	return a * t * t * t + b * t * t + c * t + d;
+}
+
+//double CDCatmullRomInterp(const KeyFrameList<double>& keys, double t)
+//{
+//	// Assuming ordered keyframes
+//	if (t <= keys.front()->t)
+//		return keys.front()->val;
+//
+//	if (t >= keys.back()->t)
+//		return keys.back()->val;
+//
+//	for (int i = 0; i < keys.size() - 1; i++)
+//	{
+//		auto p1 = *keys[i + 0];
+//		auto p2 = *keys[i + 1];
+//
+//		if (p1.t <= t && t <= p2.t)
+//		{
+//			auto p0 = i > 0 ? *keys[i - 1] : KeyFrame<double>(2.0 * p1.t - p2.t, 2.0 * p1.val - p2.val);
+//			auto p3 = i < keys.size() - 2 ? *keys[i + 2] : KeyFrame<double>(2.0 * p2.t - p1.t, 2.0 * p2.val - p1.val);
+//
+//			auto v0 = 0.5 * (p2.val - p0.val);
+//			auto v1 = 0.5 * (p3.val - p1.val);
+//
+//			return CDHermite(p1, p2, v0, v1, p1.val/p2.val, t);
+//		}
+//	}
+//	assert(false && "YO WTF?");
+//	return double();
+//}
 
 template<typename T, typename S>
 T CatmullRomInterp(const KeyFrameList<T>& keys, S t)
@@ -121,8 +231,8 @@ T CatmullRomInterp(const KeyFrameList<T>& keys, S t)
 
 		if (p1.t <= t && t <= p2.t)
 		{
-			auto p0 = i > 0 ? *keys[i - 1] : KeyFrame<T>(2.0 * p1.t - p2.t, 2.0 * p1.val - p2.val);
-			auto p3 = i < keys.size() - 2 ? *keys[i + 2] : KeyFrame<T>(2.f * p2.t - p1.t, 2.0 * p2.val - p1.val);
+			auto p0 = i > 0 ? *keys[i - 1] : KeyFrame<T>(S(2) * p1.t - p2.t, S(2) * p1.val - p2.val);
+			auto p3 = i < keys.size() - 2 ? *keys[i + 2] : KeyFrame<T>(S(2) * p2.t - p1.t, S(2) * p2.val - p1.val);
 			return CatmullRom(p0, p1, p2, p3, t);
 		}
 	}
@@ -160,16 +270,174 @@ double exp_interp_deriv(double ratio, double t)
 		return std::pow(ratio, t) * std::log(ratio) / (1 - ratio);
 }
 
-void VideoRenderer::UpdateIter(float t)
+double VideoRenderer::GetRadius(double t)
+{
+	auto& keys = radiusKeyFrames;
+
+	// Assuming ordered keyframes
+	if (t <= keys.front()->t)
+		return keys.front()->val;
+
+	if (t >= keys.back()->t)
+		return keys.back()->val;
+
+	for (int i = 0; i < keys.size() - 1; i++)
+	{
+		auto p1 = *keys[i + 0];
+		auto p2 = *keys[i + 1];
+
+		if (p1.t <= t && t <= p2.t)
+		{
+			static auto LogProject = [](double v1, double v2) -> double { return exp(2. * std::log(v1) - std::log(v2)); };
+			auto p0 = i > 0 ? *keys[i - 1] : KeyFrame<double>(2. * p1.t - p2.t, LogProject(p1.val, p2.val));
+			auto p3 = i < keys.size() - 2 ? *keys[i + 2] : KeyFrame<double>(2.f * p2.t - p1.t, LogProject(p2.val, p1.val));
+			return LogCatmullRom(p0, p1, p2, p3, t);
+		}
+	}
+	assert(false && "YO WTF?");
+	return 0.0;
+}
+
+double VideoRenderer::GetRadiusDiff(double t)
+{
+	auto& keys = radiusKeyFrames;
+
+	// Assuming ordered keyframes
+	if (t <= keys.front()->t)
+		return keys.front()->val;
+
+	if (t >= keys.back()->t)
+		return keys.back()->val;
+
+	for (int i = 0; i < keys.size() - 1; i++)
+	{
+		auto p1 = *keys[i + 0];
+		auto p2 = *keys[i + 1];
+
+		if (p1.t <= t && t <= p2.t)
+		{
+			static auto LogProject = [](double v1, double v2) -> double { return exp(2. * std::log(v1) - std::log(v2)); };
+			auto p0 = i > 0 ? *keys[i - 1] : KeyFrame<double>(2. * p1.t - p2.t, LogProject(p1.val, p2.val));
+			auto p3 = i < keys.size() - 2 ? *keys[i + 2] : KeyFrame<double>(2.f * p2.t - p1.t, LogProject(p2.val, p1.val));
+			return LogCatmullRomDiff(p0, p1, p2, p3, t);
+		}
+	}
+	assert(false && "YO WTF?");
+	return 0.0;
+}
+
+glm::dvec2 VideoRenderer::GetCenter(double t)
+{
+	auto& center = centerKeyFrames;
+
+	KeyFrameList<glm::dvec2> proj;
+	proj.push_back(std::make_shared<KeyFrame<glm::dvec2>>(center[0]->t, center[0]->val));
+	for (size_t i = 1; i < center.size(); i++)
+	{
+		const auto c0 = center[i - 1];
+		const auto c1 = center[i];
+		const auto r0 = GetRadius(c0->t);
+		const auto r1 = GetRadius(c1->t);
+
+		glm::dvec2 new_c = (c1->val - c0->val) / r0 + proj[i - 1]->val;
+		proj.push_back(std::make_shared<KeyFrame<glm::dvec2>>(c1->t, new_c));
+	}
+
+	if (t <= center.front()->t)
+		return center.front()->val;
+
+	if (t >= center.back()->t)
+		return center.back()->val;
+
+	for (int i = 0; i < center.size() - 1; i++)
+	{
+		auto a = center[i];
+		auto b = center[i + 1];
+
+		if (a->t <= t && t <= b->t)
+		{
+			const double local_t = map(t, a->t, b->t, 0.0, 1.0);
+
+			const double r0 = GetRadius(a->t);
+			const double r1 = GetRadius(b->t);
+
+			const double r = r1 / r0;
+			const double interp = exp_interp(r, local_t);
+			const double def_t = map(interp, 0.0, 1.0, a->t, b->t);
+
+			const auto c1 = *center[i + 0];
+			const auto c2 = *center[i + 1];
+
+			// Projected points to calculate velocity at points
+			//const auto p0 = i > 0 ? *proj[i - 1] : KeyFrame<glm::dvec2>(2.0 * c1.t - c2.t, 2.0 * c1.val - c2.val);
+			//const auto p1 = *proj[i + 0];
+			//const auto p2 = *proj[i + 1];
+			//const auto p3 = i < proj.size() - 2 ? *proj[i + 2] : KeyFrame<glm::dvec2>(2.0 * c2.t - c1.t, 2.0 * c2.val - c1.val);
+			const auto p0 = i > 0 ? *center[i - 1] : KeyFrame<glm::dvec2>(2.0 * c1.t - c2.t, 2.0 * c1.val - c2.val);
+			const auto p1 = *center[i + 0];
+			const auto p2 = *center[i + 1];
+			const auto p3 = i < center.size() - 2 ? *center[i + 2] : KeyFrame<glm::dvec2>(2.0 * c2.t - c1.t, 2.0 * c2.val - c1.val);
+
+			const auto v0 = glm::normalize(p2.val - p0.val) * r0 * 10.0;
+			const auto v1 = glm::normalize(p3.val - p1.val) * r1 * 10.0;
+
+			const auto dr0 = 0.0; //GetRadiusDiff(a->t);
+			const auto dr1 = 0.0; //GetRadiusDiff(b->t);
+
+			//return CDHermite(c1, c2, v0, v1, 1.0, def_t, dr0, dr1);
+			return CDHermite(c1, c2, v0, v1, r, def_t, dr0, dr1);
+		}
+	}
+}
+
+void VideoRenderer::UpdateIter(double t)
 {
 	//t = sine_interp(t);
 
+	/*
 	static const auto GetRadius = [this](float t) {
-		return InterpolateSimple(radiusKeyFrames, t, mult_interp<double, float>);
-	};
+
+		static const auto toLog = [](const KeyFrame<double>& key) -> KeyFrame<double> {
+			auto out = key;
+			out.val = std::log(key.val);
+			return out;
+		};
+
+		auto& keys = radiusKeyFrames;
+
+		// Assuming ordered keyframes
+		if (t <= keys.front()->t)
+			return keys.front()->val;
+
+		if (t >= keys.back()->t)
+			return keys.back()->val;
+
+		for (int i = 0; i < keys.size() - 1; i++)
+		{
+			auto p1 = toLog(*keys[i + 0]);
+			auto p2 = toLog(*keys[i + 1]);
+
+			if (p1.t <= t && t <= p2.t)
+			{
+				auto p0 = i > 0 ? toLog(*keys[i - 1]) : KeyFrame<double>(2.0 * p1.t - p2.t, 2.0 * p1.val - p2.val);
+				auto p3 = i < keys.size() - 2 ? toLog(*keys[i + 2]) : KeyFrame<double>(2.f * p2.t - p1.t, 2.0 * p2.val - p1.val);
+				return std::exp(CatmullRom(p0, p1, p2, p3, t));
+			}
+		}
+		assert(false && "YO WTF?");
+		return 0.0;
+
+		//return CDCatmullRomInterp(radiusKeyFrames, t);
+		//return InterpolateSimple(radiusKeyFrames, t, sin_mult_interp<double, float>);
+		//return InterpolateSimple(radiusKeyFrames, t, mult_interp<double, float>);
+	};*/
 	auto new_radius = GetRadius(t);
 	fract->SetRadius(new_radius);
 
+	auto new_center = GetCenter(t);
+	fract->SetCenter(new_center);
+
+#if 0
 	// Center
 	{
 		auto& center = centerKeyFrames;
@@ -181,7 +449,7 @@ void VideoRenderer::UpdateIter(float t)
 		//{
 		//	auto& key0 = *keyFrames[i];
 		//	auto& key1 = *keyFrames[i + 1];
-
+		//
 		//	auto delta = MapPosToCoords(resolution, GetRadius(key0.t), key0.val, key1.val) - ImVec2{ resolution.x / 2.f, resolution.y / 2.f };
 		//	//LOG_TRACE("({}, {})", delta.x, delta.y);
 		//	coords.push_back(std::make_shared<KeyFrame<ImVec2>>(key1.t, ImVec2(coords[i]->val + delta)));
@@ -212,21 +480,18 @@ void VideoRenderer::UpdateIter(float t)
 			auto& b = center[i + 1];
 			if (a->t <= t && t <= b->t)
 			{
-				const double local_t = map(t, a->t, b->t, 0.f, 1.f);
-
-				const double r = radiusKeyFrames.back()->val / radiusKeyFrames.front()->val;
-				const double def_t = exp_interp(r, t);
-				/*
+				const double local_t = map(t, a->t, b->t, 0.0, 1.0);
+				
 				const double r = GetRadius(b->t) / GetRadius(a->t);
 				const double interp = exp_interp(r, local_t);
-				const double def_t = map(interp, 0.0, 1.0, (double)a->t, (double)b->t);
-				*/
-
+				const double def_t = map(interp, 0.0, 1.0, a->t, b->t);
+				
 				// 0 -> Projection Catmul-Rom
 				// 1 -> Lineal
 				// 2 -> Hermite
 				// 3 -> Projection Hermite
-#define CENTER_INTERP_METHOD 2
+				// 4 -> Good Derivative Hermite
+#define CENTER_INTERP_METHOD 4
 #if CENTER_INTERP_METHOD == 0
 				//Projection Catmull-Rom
 				const auto projected_center = CatmullRomInterp(proj, def_t);
@@ -237,6 +502,8 @@ void VideoRenderer::UpdateIter(float t)
 
 #elif CENTER_INTERP_METHOD == 1
 				// Lineal
+				//new_center = lerp(a->val, b->val, (double)local_t);
+				//new_center = lerp(a->val, b->val, (double)exp_local_t);
 				new_center = lerp(a->val, b->val, (double)interp);
 				
 
@@ -258,6 +525,7 @@ void VideoRenderer::UpdateIter(float t)
 
 				//v1 /= exp_interp_deriv(r, 1.0);
 
+				//new_center = Hermite(c1, c2, v0, v1, (double)t);
 				new_center = Hermite(c1, c2, v0, v1, (double)def_t);
 
 #elif CENTER_INTERP_METHOD == 3
@@ -280,42 +548,25 @@ void VideoRenderer::UpdateIter(float t)
 
 				const auto r0 = GetRadius(a->t);
 				new_center = (projected_center - p1.val) * r0 + a->val;
+#elif CENTER_INTERP_METHOD == 4
+				// Good Derivative Hermite
+				const auto c1 = *center[i + 0];
+				const auto c2 = *center[i + 1];
+
+				// Projected points to calculate velocity at points
+				const auto p0 = i > 0 ? *proj[i - 1] : KeyFrame<glm::dvec2>(2.0 * c1.t - c2.t, 2.0 * c1.val - c2.val);
+				const auto p1 = *proj[i + 0];
+				const auto p2 = *proj[i + 1];
+				const auto p3 = i < proj.size() - 2 ? *proj[i + 2] : KeyFrame<glm::dvec2>(2.0 * c2.t - c1.t, 2.0 * c2.val - c1.val);
+
+				const double r0 = GetRadius(c1.t);
+				const double r1 = GetRadius(c2.t);
+
+				auto v0 = glm::normalize(p2.val - p0.val) * r0 * 5.0;
+				auto v1 = glm::normalize(p3.val - p1.val) * r1 * 5.0;
+				
+				new_center = CDHermite(c1, c2, v0, v1, r, def_t);
 #endif
-
-				//new_center = CatmullRomInterp(keyFrames, def_t);
-
-				//const auto& p1 = *coords[i];
-				//const auto& p2 = *coords[i + 1];
-				//const auto p0 = i > 0 ? *coords[i - 1] : KeyFrame<ImVec2>(2.f * p1.t - p2.t, 2.f * p1.val - p2.val);
-				//const auto p3 = i < coords.size() - 2 ? *coords[i + 2] : KeyFrame<ImVec2>(2.f * p2.t - p1.t, 2.f * p2.val - p1.val);
-
-				//const float interp_t = map(t, a->t, b->t, b->t, a->t); // Invert the interpolation order
-				//const auto target_coords = CatmullRom(p0, p1, p2, p3, interp_t) - coords[i]->val + ImVec2{ resolution.x / 2.f, resolution.y / 2.f };
-
-				//const float interp_t = t; // Invert the interpolation order
-				//const auto target_coords = CatmullRomInterp(coords, interp_t) - coords[i]->val + ImVec2{ resolution.x / 2.f, resolution.y / 2.f };
-
-				/*
-				// Coords of end.center should lerp to the center of the screen
-				const auto initial_coords = MapPosToCoords(resolution, GetRadius(a->t), a->val, b->val); // Screen coordinates of end.center at t=0
-				const auto final_coords = ImVec2{ (float)resolution.x / 2.f, (float)resolution.y / 2.f };
-				const auto target_coords = lerp(initial_coords, final_coords, (float)t); // Coordinates end.center should be at the current t
-
-				// Move the center to set the coords of end.center to be target_coords
-				const auto target_pos = MapCoordsToPos(resolution, GetRadius(t), a->val, target_coords);
-				const auto delta = target_pos - b->val;
-				new_center = a->val - delta;
-				*/
-
-				//const auto final_coords = MapPosToCoords(resolution, GetRadius(b->t), b->val, a->val); // Screen coordinates of a.center at t=1
-				//const auto initial_coords = ImVec2{ (float)resolution.x / 2.f, (float)resolution.y / 2.f };
-				//const auto target_coords = lerp(initial_coords, final_coords, (float)t); // Coordinates a.center should be at the current t
-
-				// Move the center to set the coords of end.center to be target_coords
-				//const auto target_pos = MapCoordsToPos(resolution, GetRadius(t), a->val, target_coords);
-				//new_center = target_pos;
-				//const auto delta = target_pos - a->val;
-				//glm::dvec2 new_center = a.val - delta;
 			}
 		}
 
@@ -323,16 +574,9 @@ void VideoRenderer::UpdateIter(float t)
 		//for (auto c : coords)
 		//	LOG_INFO("  ({}, ui::Vec2f{{{}, {}}}),", c->t, c->val.x, c->val.y);
 		//LOG_INFO("}");
-
 		fract->SetCenter(new_center);
 	}
-
-	//auto center_interp = [this, new_radius](const KeyFrame<glm::dvec2>& a, const KeyFrame<glm::dvec2>& b, float t) {
-	//	return CenterInterp(resolution, GetRadius(a.t), new_radius, a, b, t);
-	//};
-	//auto new_center = Interpolate(centerKeyFrames, t, center_interp);
-	////auto new_center = InterpolateSimple(centerKeyFrames, t, lerp<glm::dvec2, double>);
-	//fract->SetCenter(new_center);
+#endif
 
 	for (auto& [u, keys] : uniformsKeyFrames)
 	{

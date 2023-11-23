@@ -555,9 +555,10 @@ void MainLayer::ShowControlsWindow()
 			if (ImGui::DragScalarN("Center", ImGuiDataType_Double, glm::value_ptr(center), 2, (float)m_Mandelbrot.GetRadius() / 70.f, &cmin, &cmax, "%.15f"))
 				m_Mandelbrot.SetCenter(center);
 
-			double rmin = 1e-15, rmax = 50;
+			//double rmin = 1e-15, rmax = 50;
 			double radius = m_Mandelbrot.GetRadius();
-			if (ImGui::DragScalar("Radius", ImGuiDataType_Double, &radius, 0.01f, &rmin, &rmax, "%e", ImGuiSliderFlags_Logarithmic))
+			if (DragDouble("Radius", &radius, 0.01f, 1e-15, 50, "%e", ImGuiSliderFlags_Logarithmic))
+			//if (ImGui::DragScalar("Radius", ImGuiDataType_Double, &radius, 0.01f, &rmin, &rmax, "%e", ImGuiSliderFlags_Logarithmic))
 			{
 				m_Mandelbrot.SetRadius(radius);
 				m_MandelbrotZoomData.start_radius = radius;
@@ -588,9 +589,10 @@ void MainLayer::ShowControlsWindow()
 			if (ImGui::DragScalarN("Center", ImGuiDataType_Double, glm::value_ptr(center), 2, (float)m_Julia.GetRadius() / 200.f, &cmin, &cmax, "%.15f"))
 				m_Julia.SetCenter(center);
 
-			double rmin = 1e-15, rmax = 50;
+			//double rmin = 1e-15, rmax = 50;
 			double radius = m_Julia.GetRadius();
-			if (ImGui::DragScalar("Radius", ImGuiDataType_Double, &radius, 0.01f, &rmin, &rmax, "%e", ImGuiSliderFlags_Logarithmic))
+			if (DragDouble("Radius", &radius, 0.01f, 1e-15, 50, "%e", ImGuiSliderFlags_Logarithmic))
+			//if (ImGui::DragScalar("Radius", ImGuiDataType_Double, &radius, 0.01f, &rmin, &rmax, "%e", ImGuiSliderFlags_Logarithmic))
 			{
 				m_Julia.SetRadius(radius);
 				m_JuliaZoomData.start_radius = radius;
@@ -652,7 +654,7 @@ bool EditKeyFrames(std::vector<std::shared_ptr<KeyFrame<T>>>& keyFrames, T new_v
 
 		ImGui::PushItemWidth(ImGui::CalcItemWidth() * 0.25f);
 
-		if (ImGui::DragFloat("##time", &t, 0.01f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+		if (DragDouble("##time", &t, 0.01f, 0.f, 1.f, "%.3f", ImGuiSliderFlags_AlwaysClamp))
 		{
 			edited_time = true;
 			val_changed = true;

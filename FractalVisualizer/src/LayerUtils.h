@@ -119,6 +119,11 @@ bool DragFloatR(const char* label, float* v, float v_default, float v_speed = 1.
 	return value_changed;
 }
 
+bool DragDouble(const char* label, double* v, float v_speed, double v_min, double v_max, const char* format, ImGuiSliderFlags flags)
+{
+	return ImGui::DragScalar(label, ImGuiDataType_Double, v, v_speed, &v_min, &v_max, format, flags);
+}
+
 bool DragDoubleR(const char* label, double* v, double v_default, float v_speed = 1.0f, double v_min = 0.0f, double v_max = 0.0f, const char* format = "%.3f", ImGuiSliderFlags flags = 0)
 {
 	ImGui::PushID(label);

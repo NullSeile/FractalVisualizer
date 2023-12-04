@@ -20,6 +20,7 @@ project "FractalVisualizer"
 		"../OpenGL-Core/vendor/glm",
 		"../OpenGL-Core/vendor/Glad/include",
 		"../OpenGL-Core/vendor/imgui",
+		"../OpenGL-Core/vendor/implot",
 		"vendor"
 	}
 

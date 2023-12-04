@@ -1,6 +1,7 @@
 # Directories
 **bin/
 **bin-int/
+**/Makefile
 
 # Files
 *.user

@@ -1,3 +1,5 @@
+require "vscode"
+
 workspace "FractalVisualizer"
 	architecture "x64"
 	startproject "FractalVisualizer"

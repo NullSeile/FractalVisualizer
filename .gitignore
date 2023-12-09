@@ -3,6 +3,10 @@
 **bin-int/
 **/Makefile
 
+# VSCode
+.vscode/
+.code-workspace
+
 # Files
 *.user
 

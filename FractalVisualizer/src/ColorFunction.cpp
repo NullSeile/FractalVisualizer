@@ -5,6 +5,11 @@ using namespace GLCore::Utils;
 
 static std::string uniform_s = "#uniform";
 
+const std::shared_ptr<ColorFunction> ColorFunction::Default = std::make_shared<ColorFunction>(
+	"vec3 get_color(float i) { return vec3(1); }",
+	"default"
+);
+
 ColorFunction::ColorFunction(const std::string& src, const std::string& name) 
 	: m_src(src), m_name(name)
 {

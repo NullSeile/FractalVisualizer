@@ -86,6 +86,8 @@ public:
 	ColorFunction(const ColorFunction& other);
 	~ColorFunction();
 
+	static const std::shared_ptr<ColorFunction> Default;
+
 	void UpdateUniformsToShader(GLuint shader) const;
 
 	const std::vector<Uniform*>& GetUniforms() const { return m_uniforms; }

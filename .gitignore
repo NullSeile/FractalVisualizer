@@ -5,7 +5,7 @@
 
 # VSCode
 .vscode/
-.code-workspace
+*.code-workspace
 
 # Files
 *.user

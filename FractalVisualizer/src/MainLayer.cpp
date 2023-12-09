@@ -40,6 +40,9 @@ MainLayer::MainLayer()
 	m_Mandelbrot.SetSmoothColor(m_SmoothColor);
 	m_Julia.SetSmoothColor(m_SmoothColor);
 
+	m_Mandelbrot.SetEqExponent(m_EqExponent);
+	m_Julia.SetEqExponent(m_EqExponent);
+
 	m_Mandelbrot.SetCenter({ -0.5, 0 });
 	m_Julia.SetRadius(1.3);
 
@@ -339,6 +342,12 @@ void MainLayer::ShowControlsWindow()
 
 				glm::uvec2 juliaSize = (glm::vec2)m_Mandelbrot.GetSize() * (m_ResolutionPercentage / 100.f);
 				m_Julia.SetSize(juliaSize);
+			}
+
+			if (ImGui::DragInt("Equation exponent", &m_EqExponent, 0.1f, 2, INT_MAX, "%d", ImGuiSliderFlags_AlwaysClamp))
+			{
+				m_Mandelbrot.SetEqExponent(m_EqExponent);
+				m_Julia.SetEqExponent(m_EqExponent);
 			}
 
 			if (ImGui::ColorEdit3("Set Color", glm::value_ptr(m_SetColor))) 

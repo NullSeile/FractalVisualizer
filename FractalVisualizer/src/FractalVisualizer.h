@@ -46,6 +46,9 @@ public:
 	void SetSmoothColor(bool smoothColor);
 	bool GetSmoothColor() const { return m_SmoothColor; }
 
+	void SetEqExponent(int eqExponent);
+	int GetEqExponent() const { return m_EqExponent; }
+
 	//void SetUniform()
 	GLuint GetShader() const { return m_Shader; }
 
@@ -78,6 +81,8 @@ private:
 	int m_Frame = 0;
 	bool m_SmoothColor = false;
 	int m_FadeThreshold = 0;
+
+	int m_EqExponent = 2;
 
 	std::shared_ptr<ColorFunction> m_ColorFunction;
 

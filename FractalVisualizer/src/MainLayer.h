@@ -63,6 +63,7 @@ private:
 	int m_FadeThreshold = 0;
 	bool m_SmoothColor = true;
 	bool m_SmoothZoom = true;
+	int m_EqExponent = 2;
 
 	State m_State = State::Exploring;
 

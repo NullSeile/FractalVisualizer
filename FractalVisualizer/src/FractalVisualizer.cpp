@@ -124,6 +124,9 @@ void FractalVisualizer::Update()
 	location = glGetUniformLocation(m_Shader, "i_FadeThreshold");
 	glUniform1ui(location, m_FadeThreshold);
 
+	location = glGetUniformLocation(m_Shader, "i_EqExp");
+	glUniform1ui(location, m_EqExponent);
+
 	auto [xRange, yRange] = GetRange();
 
 	location = glGetUniformLocation(m_Shader, "i_xRange");
@@ -276,6 +279,12 @@ void FractalVisualizer::SetMaxEpochs(int maxEpochs)
 void FractalVisualizer::SetSmoothColor(bool smoothColor)
 {
 	m_SmoothColor = smoothColor;
+	ResetRender();
+}
+
+void FractalVisualizer::SetEqExponent(int eqExponent)
+{
+	m_EqExponent = eqExponent;
 	ResetRender();
 }
 

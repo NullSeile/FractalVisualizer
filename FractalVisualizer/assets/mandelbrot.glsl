@@ -18,6 +18,8 @@ uniform uint i_MaxEpochs;
 uniform uint i_FadeThreshold;
 uniform bool i_SmoothColor;
 
+uniform uint i_EqExp;
+
 #color
 
 double map(double value, double inputMin, double inputMax, double outputMin, double outputMax)
@@ -30,9 +32,17 @@ double rand(float s)
     return fract(sin(s * 12.9898) * 43758.5453);
 }
 
+dvec2 mul(dvec2 a, dvec2 b)
+{
+    return dvec2(a.x*b.x-a.y*b.y, a.x*b.y+a.y*b.x);
+}
+
 dvec2 mandelbrot(dvec2 z, dvec2 c)
 {
-    return dvec2(z.x*z.x - z.y*z.y, 2.0 * z.x*z.y) + c;
+    dvec2 res = z;
+    for (uint i = 0; i < i_EqExp - 1; i++)
+        res = mul(res, z);
+    return res + c;
 }
 
 void main()
@@ -104,7 +114,7 @@ void main()
         if (i_SmoothColor)
         {
             float log_zn = log(float(z.x*z.x + z.y*z.y)) / 2.0;
-            float nu = log(log_zn / log(2.0)) / log(2.0);
+            float nu = log(log_zn / log(2.0)) / log(i_EqExp);
 
             float new_iter = n + 1 - nu + 1.3;
 

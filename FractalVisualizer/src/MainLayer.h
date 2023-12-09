@@ -76,6 +76,7 @@ private:
 
 	std::vector<ColorPreview> m_ColorsPreview;
 	std::vector<std::shared_ptr<ColorFunction>> m_Colors;
+	std::vector<std::optional<std::string>> m_ColorsError;
 	std::vector<const char*> m_ColorsName;
 	size_t m_SelectedColor = 0;
 	ImColor m_IterationsColor = { 1.f, 1.f, 1.f, 0.9f };

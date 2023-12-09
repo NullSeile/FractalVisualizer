@@ -6,6 +6,7 @@
 #include <format>
 #include <algorithm>
 #include <functional>
+#include <ranges>
 
 #include "LayerUtils.h"
 #include <imgui_internal.h>
@@ -457,7 +458,12 @@ void MainLayer::ShowControlsWindow()
 			{
 				ImGui::PushID((int)i);
 
-				if (m_SelectedColor == i)
+				if (m_ColorsError[i])
+				{
+					ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.f));
+					ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.f, 0.2f, 0.2f, 1.f));
+				}
+				else if (m_SelectedColor == i)
 					ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_ButtonActive]);
 				else
 					ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_Button]);
@@ -465,13 +471,23 @@ void MainLayer::ShowControlsWindow()
 				if (ImGui::ImageButton((ImTextureID)(intptr_t)m_ColorsPreview[i].textureID, button_size))
 				{
 					m_SelectedColor = i;
-					m_Mandelbrot.SetColorFunction(m_Colors[m_SelectedColor]);
-					m_Julia.SetColorFunction(m_Colors[m_SelectedColor]);
+					if (m_ColorsError[m_SelectedColor])
+					{
+						m_Mandelbrot.SetColorFunction(ColorFunction::Default);
+						m_Julia.SetColorFunction(ColorFunction::Default);
+					}
+					else
+					{
+						m_Mandelbrot.SetColorFunction(m_Colors[m_SelectedColor]);
+						m_Julia.SetColorFunction(m_Colors[m_SelectedColor]);
+					}
 				}
 				if (ImGui::IsItemHovered() && GImGui->HoveredIdTimer > 0.5f)
 					ImGui::SetTooltip(m_Colors[i]->GetName().c_str());
 
 				ImGui::PopStyleColor();
+				if (m_ColorsError[i])
+					ImGui::PopStyleColor();
 
 				float last_button_x = ImGui::GetItemRectMax().x;
 				float next_button_x = last_button_x + style.ItemSpacing.x + button_size.x; // Expected position if next button was on same line
@@ -485,70 +501,77 @@ void MainLayer::ShowControlsWindow()
 			bool updated = false;
 
 			ImGui::Spacing();
-			ImGui::Text("Color function parameters");
-			for (Uniform* uniform : m_Colors[m_SelectedColor]->GetUniforms())
+			if (m_ColorsError[m_SelectedColor])
 			{
-				bool modified = false;
-
-				switch (uniform->type)
+				ImGui::Text("Errors:");
+				ImGui::TextColored(ImColor(255, 50, 50), m_ColorsError[m_SelectedColor].value().c_str());
+			}
+			else
+			{
+				ImGui::Text("Color function parameters");
+				for (Uniform* uniform : m_Colors[m_SelectedColor]->GetUniforms())
 				{
-				case UniformType::FLOAT: {
-					auto u = dynamic_cast<FloatUniform*>(uniform);
-					modified = DragFloatR(u->displayName.c_str(), &u->val, u->default_val, u->speed, u->range.x, u->range.y);
-					break;
-				}
-				case UniformType::COLOR: {
-					auto u = dynamic_cast<ColorUniform*>(uniform);
-					modified = ColorEdit3R(u->displayName.c_str(), glm::value_ptr(u->color), u->default_color);
-					break;
-				}
-				case UniformType::BOOL: {
-					auto u = dynamic_cast<BoolUniform*>(uniform);
-					modified = ImGui::Checkbox(u->displayName.c_str(), &u->val);
-					break;
-				}
-				default: {
-					LOG_ERROR("ERROR: uniform type with code `{0}` is not implemented", (int)uniform->type);
-					exit(EXIT_FAILURE);
-					break;
-				}
-				}
-				if (modified)
-				{
-					m_Mandelbrot.ResetRender();
-					m_Julia.ResetRender();
+					bool modified = false;
 
-					if (uniform->update)
+					switch (uniform->type)
 					{
-						updated = true;
-						uniform->UpdateToShader(m_ColorsPreview[m_SelectedColor].shaderID);
+					case UniformType::FLOAT: {
+						auto u = dynamic_cast<FloatUniform*>(uniform);
+						modified = DragFloatR(u->displayName.c_str(), &u->val, u->default_val, u->speed, u->range.x, u->range.y);
+						break;
+					}
+					case UniformType::COLOR: {
+						auto u = dynamic_cast<ColorUniform*>(uniform);
+						modified = ColorEdit3R(u->displayName.c_str(), glm::value_ptr(u->color), u->default_color);
+						break;
+					}
+					case UniformType::BOOL: {
+						auto u = dynamic_cast<BoolUniform*>(uniform);
+						modified = ImGui::Checkbox(u->displayName.c_str(), &u->val);
+						break;
+					}
+					default: {
+						LOG_ERROR("ERROR: uniform type with code `{0}` is not implemented", (int)uniform->type);
+						exit(EXIT_FAILURE);
+						break;
+					}
+					}
+					if (modified)
+					{
+						m_Mandelbrot.ResetRender();
+						m_Julia.ResetRender();
+
+						if (uniform->update)
+						{
+							updated = true;
+							uniform->UpdateToShader(m_ColorsPreview[m_SelectedColor].shaderID);
+						}
 					}
 				}
+
+				if (updated)
+				{
+					GLuint fb;
+					glGenFramebuffers(1, &fb);
+					glBindFramebuffer(GL_FRAMEBUFFER, fb);
+
+					glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_ColorsPreview[m_SelectedColor].textureID, 0);
+					GLenum buffers[] = { GL_COLOR_ATTACHMENT0 };
+					glDrawBuffers(1, buffers);
+
+					glUseProgram(m_ColorsPreview[m_SelectedColor].shaderID);
+
+					glViewport(0, 0, previewSize.x, previewSize.y);
+					glDisable(GL_BLEND);
+
+					glBindVertexArray(GLCore::Application::GetDefaultQuadVA());
+					glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+
+					glDeleteFramebuffers(1, &fb);
+
+					glBindFramebuffer(GL_FRAMEBUFFER, 0);
+				}
 			}
-
-			if (updated)
-			{
-				GLuint fb;
-				glGenFramebuffers(1, &fb);
-				glBindFramebuffer(GL_FRAMEBUFFER, fb);
-
-				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_ColorsPreview[m_SelectedColor].textureID, 0);
-				GLenum buffers[] = { GL_COLOR_ATTACHMENT0 };
-				glDrawBuffers(1, buffers);
-
-				glUseProgram(m_ColorsPreview[m_SelectedColor].shaderID);
-
-				glViewport(0, 0, previewSize.x, previewSize.y);
-				glDisable(GL_BLEND);
-
-				glBindVertexArray(GLCore::Application::GetDefaultQuadVA());
-				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
-
-				glDeleteFramebuffers(1, &fb);
-
-				glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			}
-
 			ImGui::Spacing();
 		}
 
@@ -1013,19 +1036,33 @@ void MainLayer::RefreshColorFunctions()
 	// Crear previews colors
 	m_Colors.clear();
 
-	for (auto prev : m_ColorsPreview)
+	for (const auto& [prev, error] : std::views::zip(m_ColorsPreview, m_ColorsError))
 	{
-		glDeleteTextures(1, &prev.textureID);
-		glDeleteProgram(prev.shaderID);
+		if (!error)
+		{
+			glDeleteTextures(1, &prev.textureID);
+			glDeleteProgram(prev.shaderID);
+		}
 	}
 	m_ColorsPreview.clear();
+	m_ColorsError.clear();
 
 	// Allocate new colors
 	m_Colors.reserve(10);
+	m_ColorsError.reserve(10);
 	for (const auto& path : std::filesystem::directory_iterator("assets/colors"))
 	{
 		std::ifstream colorSrc(path.path());
-		m_Colors.emplace_back(std::make_shared<ColorFunction>(std::string((std::istreambuf_iterator<char>(colorSrc)), std::istreambuf_iterator<char>()), path.path().filename().replace_extension().string()));
+		auto colorFn = std::make_shared<ColorFunction>(
+			std::string(std::istreambuf_iterator<char>(colorSrc), std::istreambuf_iterator<char>()),
+			path.path().filename().replace_extension().string()
+		);
+		auto error = GLCore::Utils::ValidateShader(colorFn->GetSource());
+		m_ColorsError.push_back(error);
+		if (error)
+			LOG_ERROR("{}", error.value());
+		
+		m_Colors.emplace_back(colorFn);
 	}
 
 	m_ColorsName.reserve(m_Colors.size());
@@ -1039,8 +1076,14 @@ void MainLayer::RefreshColorFunctions()
 
 	// Allocate the prevews
 	m_ColorsPreview.reserve(m_Colors.size());
-	for (const auto& c : m_Colors)
+	for (const auto& [c, error] : std::views::zip(m_Colors, m_ColorsError))
 	{
+		if (error)
+		{
+			m_ColorsPreview.emplace_back(0, 0);
+			continue;
+		}
+
 		// Make the preview
 		GLuint tex;
 		glGenTextures(1, &tex);
@@ -1102,6 +1145,15 @@ void main()
 	if (m_SelectedColor >= m_Colors.size())
 		m_SelectedColor = 0;
 
-	m_Mandelbrot.SetColorFunction(m_Colors[m_SelectedColor]);
-	m_Julia.SetColorFunction(m_Colors[m_SelectedColor]);
+
+	if (m_ColorsError[m_SelectedColor])
+	{
+		m_Mandelbrot.SetColorFunction(ColorFunction::Default);
+		m_Julia.SetColorFunction(ColorFunction::Default);
+	}
+	else
+	{
+		m_Mandelbrot.SetColorFunction(m_Colors[m_SelectedColor]);
+		m_Julia.SetColorFunction(m_Colors[m_SelectedColor]);
+	}
 }

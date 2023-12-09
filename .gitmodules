@@ -1,3 +1,6 @@
 [submodule "OpenGL-Core"]
 	path = OpenGL-Core
 	url = https://github.com/NullSeile/OpenGL-Core.git
+[submodule "vendor/bin/premake/scripts/vscode"]
+	path = vendor/bin/premake/scripts/vscode
+	url = https://github.com/NullSeile/premake-vscode.git

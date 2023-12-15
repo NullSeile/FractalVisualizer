@@ -15,6 +15,13 @@
 
 static glm::uvec2 previewSize = { 100, 1 };
 
+template<typename T, glm::qualifier Q>
+std::ostream& operator<<(std::ostream& os, const glm::vec<2, T, Q>& vec)
+{
+	os << "(" << vec.x << ", " << vec.y << ")";
+	return os;
+}
+
 MainLayer::MainLayer()
 	: m_MandelbrotSrcPath("assets/mandelbrot.glsl")
 	, m_Mandelbrot(m_MandelbrotSrcPath)
@@ -55,6 +62,8 @@ MainLayer::MainLayer()
 
 	m_JuliaZoomData.start_radius = m_Julia.GetRadius();
 	m_JuliaZoomData.target_radius = m_Julia.GetRadius();
+
+	UpdatePlots();
 }
 
 MainLayer::~MainLayer()
@@ -162,6 +171,65 @@ void MainLayer::OnUpdate(GLCore::Timestep ts)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
+template<typename T>
+static T map(const T& x, const T& x0, const T& x1, const T& y0, const T& y1)
+{
+	return y0 + ((y1 - y0) / (x1 - x0)) * (x - x0);
+}
+
+static double exp_interp(double ratio, double t)
+{
+	if (ratio == 1)
+		return t;
+	else
+		return (std::pow(ratio, t) - 1.0) / (ratio - 1.0);
+}
+
+template<typename T, typename S>
+T Hermite(const KeyFrame<T>& p0, const KeyFrame<T>& p1, const T& v0, const T& v1, S t)
+{
+	t = t - p0.t;
+	S t1 = p1.t - p0.t;
+
+	T a = (S(2) * (p0.val - p1.val) + t1 * (v0 + v1)) / std::pow(t1, 3);
+	T b = -(S(3) * (p0.val - p1.val) + t1 * (S(2) * v0 + v1)) / std::pow(t1, 2);
+	T c = v0;
+	T d = p0.val;
+
+	return a * t * t * t + b * t * t + c * t + d;
+}
+
+#define N_SAMPLES 1000
+static ImPlotPoint centerPoints[N_SAMPLES];
+
+static ImPlotPoint plot2[N_SAMPLES];
+static ImPlotPoint plot3[N_SAMPLES];
+
+void MainLayer::UpdatePlots()
+{
+	m_VideoRenderer.Update();
+	glm::dvec2 center = m_VideoRenderer.GetCenter(0);
+	centerPoints[0] = ImPlotPoint(center.x, center.y);
+	double dt = 1 / (N_SAMPLES - 1.0);
+	for (size_t n = 1; n < N_SAMPLES; n++)
+	{
+		double t = n / (double)(N_SAMPLES - 1);
+
+		// glm::dvec2 center = m_VideoRenderer.IncrCenter(dt);
+		glm::dvec2 center = m_VideoRenderer.GetCenter(t);
+		centerPoints[n] = ImPlotPoint(center.x, center.y);
+
+		plot2[n] = ImPlotPoint(t, center.x);
+		plot3[n] = ImPlotPoint(t, center.y);
+	}
+}
+
+template<typename T>
+void SortKeyFrames(KeyFrameList<T>& keyFrames)
+{
+	std::sort(keyFrames.begin(), keyFrames.end(), [](auto a, auto b) { return a->t < b->t; });
+}
+
 void MainLayer::OnImGuiRender()
 {
 	ImGui::DockSpaceOverViewport();
@@ -174,6 +242,8 @@ void MainLayer::OnImGuiRender()
 
 #if 1
 //#ifdef GLCORE_DEBUG
+	ImPlot::ShowDemoWindow();
+
 	if (m_ShowDemo)
 		ImGui::ShowDemoWindow(&m_ShowDemo);
 
@@ -234,6 +304,67 @@ void FractalHandleZoom(FractalVisualizer& fract, int resolutionPercentage, float
 	}
 }
 
+static const float DRAG_GRAB_HALF_SIZE = 4.0f;
+
+#include <implot_internal.h>
+
+ImVec2 FractToWindow(const glm::dvec2 pos, const FractalVisualizer& fract, int resolutionPercentage)
+{
+	return ImagePosToWindowPos(fract.MapPosToCoords(pos), resolutionPercentage);
+}
+
+glm::dvec2 WindowToFract(const ImVec2 pos, const FractalVisualizer& fract, int resolutionPercentage)
+{
+	return fract.MapCoordsToPos(WindowPosToImagePos(pos, resolutionPercentage));
+}
+
+bool DragPoint(int n_id, glm::dvec2* point, const FractalVisualizer& fract, int resolutionPercentage, const ImVec4& col, float radius = 4, ImPlotDragToolFlags flags = 0, bool* out_clicked = nullptr, bool* out_hovered = nullptr, bool* out_held = nullptr) {
+    ImGui::PushID("#IMPLOT_DRAG_POINT");
+
+    const bool input = !ImHasFlag(flags, ImPlotDragToolFlags_NoInputs);
+    const bool show_curs = !ImHasFlag(flags, ImPlotDragToolFlags_NoCursors);
+    const bool no_delay = !ImHasFlag(flags, ImPlotDragToolFlags_Delayed);
+    const float grab_half_size = ImMax(DRAG_GRAB_HALF_SIZE, radius);
+    const ImVec4 color = ImPlot::IsColorAuto(col) ? ImGui::GetStyleColorVec4(ImGuiCol_Text) : col;
+    const ImU32 col32 = ImGui::ColorConvertFloat4ToU32(color);
+
+    // ImVec2 pos = PlotToPixels(*x,*y,IMPLOT_AUTO,IMPLOT_AUTO);
+    ImVec2 pos = FractToWindow(*point, fract, resolutionPercentage);
+    const ImGuiID id = ImGui::GetCurrentWindow()->GetID(n_id);
+    ImRect rect(pos.x-grab_half_size,pos.y-grab_half_size,pos.x+grab_half_size,pos.y+grab_half_size);
+    bool hovered = false, held = false;
+
+    ImGui::KeepAliveID(id);
+    if (input) {
+        bool clicked = ImGui::ButtonBehavior(rect,id,&hovered,&held);
+		// LOG_INFO("Clicked: {}", clicked);
+        if (out_clicked) *out_clicked = clicked;
+        if (out_hovered) *out_hovered = hovered;
+        if (out_held)    *out_held    = held;
+    }
+
+    bool modified = false;
+    if (held && ImGui::IsMouseDragging(0)) {
+		*point = WindowToFract(ImGui::GetMousePos(), fract, resolutionPercentage);
+        // *x = ImPlot::GetPlotMousePos(IMPLOT_AUTO,IMPLOT_AUTO).x;
+        // *y = ImPlot::GetPlotMousePos(IMPLOT_AUTO,IMPLOT_AUTO).y;
+        modified = true;
+    }
+
+    // PushPlotClipRect();
+    ImDrawList& DrawList = *ImGui::GetWindowDrawList();
+    if ((hovered || held) && show_curs)
+        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+    if (modified && no_delay)
+        pos = FractToWindow(*point, fract, resolutionPercentage);
+        // pos = PlotToPixels(*x,*y,IMPLOT_AUTO,IMPLOT_AUTO);
+    DrawList.AddCircleFilled(pos, radius, col32);
+    // PopPlotClipRect();
+
+    ImGui::PopID();
+    return modified;
+}
+
 void MainLayer::ShowMandelbrotWindow()
 {
 	ImGuiIO& io = ImGui::GetIO();
@@ -258,6 +389,46 @@ void MainLayer::ShowMandelbrotWindow()
 		static bool showIters = false;
 		static glm::dvec2 c;
 		PersistentMiddleClick(showIters, c, m_Mandelbrot, m_ResolutionPercentage);
+
+		ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+		ImVector<ImVec2> points;
+		points.reserve(N_SAMPLES);
+		for (int i = 0; i < N_SAMPLES; i++)
+		{
+			auto c = centerPoints[i];
+			points.push_back(FractToWindow({c.x, c.y}, m_Mandelbrot, m_ResolutionPercentage));
+		}
+		draw_list->AddPolyline(points.begin(), points.size(), 0xFFFFFFFF, 0, 1.5);
+
+		// for (const auto& p : m_VideoRenderer.centerKeyFrames)
+		for (auto [i, p] : std::views::enumerate(m_VideoRenderer.centerKeyFrames))
+		{
+			bool hover = false;
+			if (DragPoint(2*i, &(p->val.pos), m_Mandelbrot, m_ResolutionPercentage, ImVec4(1, 1, 1, 1), 5, 0, nullptr, &hover))
+			{
+				UpdatePlots();
+			}
+			if (hover && ImGui::IsMouseDoubleClicked(0))
+			{
+				if (p->val.vel == glm::dvec2(0))
+					p->val.vel = glm::dvec2(0.0, m_Mandelbrot.GetRadius());
+				else
+					p->val.vel = glm::dvec2(0);
+				UpdatePlots();
+			}
+
+			auto handle = p->val.pos + 0.1*p->val.vel;
+			if (DragPoint(2*i+1, &handle, m_Mandelbrot, m_ResolutionPercentage, ImVec4(0.8f, 0.8f, 0.8f, 0.9f), 4))
+			{
+				p->val.vel = (handle - p->val.pos) / 0.1;
+				UpdatePlots();
+			}
+			
+			// draw_list->AddLine(center, handle, 0xFF999999);
+			// draw_list->AddCircleFilled(center, 5, 0xFFAAAAAA);
+			// draw_list->AddCircleFilled(handle, 4, 0xFFAAFFFF);
+		}
 
 		if (showIters)
 			DrawIterations(c, c, m_IterationsColor, m_Mandelbrot, m_ResolutionPercentage);
@@ -653,13 +824,7 @@ void MainLayer::ShowControlsWindow()
 }
 
 template<typename T>
-void SortKeyFrames(std::vector<std::shared_ptr<KeyFrame<T>>>& keyFrames)
-{
-	std::sort(keyFrames.begin(), keyFrames.end(), [](auto a, auto b) { return a->t < b->t; });
-}
-
-template<typename T>
-bool EditKeyFrames(std::vector<std::shared_ptr<KeyFrame<T>>>& keyFrames, T new_val, float new_t, std::function<bool(T&)> value_edit)
+bool EditKeyFrames(KeyFrameList<T>& keyFrames, T new_val, float new_t, std::function<bool(T&)> value_edit)
 {
 	bool val_changed = false;
 	bool edited_time = false;
@@ -708,7 +873,10 @@ bool EditKeyFrames(std::vector<std::shared_ptr<KeyFrame<T>>>& keyFrames, T new_v
 
 	if (deleted_index >= 0)
 		if (keyFrames.size() > 1)
+		{
 			keyFrames.erase(keyFrames.begin() + deleted_index);
+			val_changed = true;
+		}
 
 	return val_changed;
 }
@@ -819,27 +987,40 @@ void MainLayer::ShowRenderWindow()
 						{
 							return DragDoubleR("##radius", &r, fract.GetRadius(), 0.01f, 1e-15, 50, "%e", ImGuiSliderFlags_Logarithmic);
 						}))
+					{
 						m_ShouldUpdatePreview = true;
+						UpdatePlots();
+					}
 
 					ImGui::TreePop();
 				}
 				if (ImGui::TreeNodeEx("Center", ImGuiTreeNodeFlags_AllowItemOverlap))
 				{
-					if (EditKeyFrames<glm::dvec2>(data.centerKeyFrames, fract.GetCenter(), m_PreviewT, [&fract](glm::dvec2& c)
+					if (EditKeyFrames<CenterKey>(data.centerKeyFrames, {fract.GetCenter(), {0.0, 0.0}}, m_PreviewT, [&fract](CenterKey& c)
 						{
-							return DragDouble2R("##center", glm::value_ptr(c), fract.GetCenter(), (float)fract.GetRadius() / 70.f, -2.0, 2.0, "%.15f");
+							bool val_changed = false;
+							ImGui::BeginGroup();
+							val_changed |= DragDouble2R("Center##center", glm::value_ptr(c.pos), fract.GetCenter(), (float)fract.GetRadius() / 70.f, -2.0, 2.0, "%.15f");
+							if (ImGui::TreeNode("Velocity")) {
+								val_changed |= DragDouble2("##vel", glm::value_ptr(c.vel), (float)fract.GetRadius() / 70.f, -2.0, 2.0, "%.15f");
+								ImGui::TreePop();
+							}
+							ImGui::EndGroup();
+
+							return val_changed;
 						}))
 					{
 						m_ShouldUpdatePreview = true;
-						LOG_INFO("{");
-						for (auto c : data.centerKeyFrames)
-							LOG_INFO("  ({}, ui::Vec2f{{{}, {}}}),", c->t, c->val.x, c->val.y);
-						LOG_INFO("}");
+						UpdatePlots();
+						// LOG_INFO("{");
+						// for (auto c : data.centerKeyFrames)
+						// 	LOG_INFO("  ({}, ui::Vec2f{{{}, {}}}),", c->t, c->val.x, c->val.y);
+						// LOG_INFO("}");
 
-						LOG_INFO("{");
-						for (auto c : data.radiusKeyFrames)
-							LOG_INFO("  ({}, {}),", c->t, c->val);
-						LOG_INFO("}");
+						// LOG_INFO("{");
+						// for (auto c : data.radiusKeyFrames)
+						// 	LOG_INFO("  ({}, {}),", c->t, c->val);
+						// LOG_INFO("}");
 					}
 
 					ImGui::TreePop();
@@ -886,7 +1067,7 @@ void MainLayer::ShowRenderWindow()
 
 			if (ImGui::Button("Render Video"))
 			{
-				data.fileName = std::format("{}_{:.15f},{:.15f}", fractal_names[fractal_index], data.centerKeyFrames.back()->val.x, data.centerKeyFrames.back()->val.y);
+				data.fileName = std::format("{}_{:.15f},{:.15f}", fractal_names[fractal_index], data.centerKeyFrames.back()->val.pos.x, data.centerKeyFrames.back()->val.pos.y);
 				if (GLCore::Application::Get().GetWindow().SaveFileDialog("mp4 (*.mp4)\0*.mp4\0", data.fileName))
 				{
 					m_State = State::Rendering;

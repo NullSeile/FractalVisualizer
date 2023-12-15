@@ -74,6 +74,8 @@ private:
 	FractalVisualizer& m_SelectedFractal;
 	VideoRenderer m_VideoRenderer;
 
+	void UpdatePlots();
+
 	std::vector<ColorPreview> m_ColorsPreview;
 	std::vector<std::shared_ptr<ColorFunction>> m_Colors;
 	std::vector<std::optional<std::string>> m_ColorsError;

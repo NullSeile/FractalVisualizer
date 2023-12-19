@@ -28,10 +28,12 @@ public:
 	void UpdateIter(double t);
 	void SetColorFunction(const std::shared_ptr<ColorFunction>& new_color);
 	void UpdateToFractal();
-	void Update();
+	void Invalidate();
+	void InvalidateRadius(double dt = 1e-4);
+	void InvalidateCenter();
 
 	double GetRadius(double t) const;
-	double GetRadiusDiff(double t) const;
+	double GetRadiusInteg(double t) const;
 
 	glm::dvec2 GetCenter(double t);
 
@@ -57,12 +59,9 @@ public:
 	int current_iter = 0;
 
 	std::vector<double> m_SegmentsLength;
+	std::vector<double> m_RadiusIntegPoints;
 
 	KeyFrameList<double> radiusKeyFrames = {
-		//std::make_shared<KeyFrame<double>>(0.f, 1.0),
-		//std::make_shared<KeyFrame<double>>(1.f, 5.880701162833604e-10),
-		//std::make_shared<KeyFrame<double>>(0.f, 1.0)
-
 		std::make_shared<KeyFrame<double>>(0.0, 1.0),
 		std::make_shared<KeyFrame<double>>(0.33, 0.008057857721976197),
 		std::make_shared<KeyFrame<double>>(0.433, 0.28782969446188766),
@@ -70,12 +69,6 @@ public:
 		std::make_shared<KeyFrame<double>>(0.795, 1.172453080986668e-05),
 	};
 	KeyFrameList<CenterKey> centerKeyFrames = {
-		//std::make_shared<KeyFrame<glm::dvec2>>(0.f, glm::dvec2{ -0.5, 0 }),
-		//std::make_shared<KeyFrame<glm::dvec2>>(0.27f, glm::dvec2{ -1.1869930090440344, -0.30304765384587895 }),
-		//std::make_shared<KeyFrame<glm::dvec2>>(0.7f, glm::dvec2{ -1.183855125737139, -0.3007501720841974 }),
-		//std::make_shared<KeyFrame<glm::dvec2>>(1.f, glm::dvec2{ -1.1838554525327514, -0.3007498470218996 })
-		//std::make_shared<KeyFrame<glm::dvec2>>(0.f, glm::dvec2{ 0.0, 0.0 })
-
 		std::make_shared<KeyFrame<CenterKey>>(0, CenterKey{ {-0.5, 0}, {0.0, 0.0} }),
 		std::make_shared<KeyFrame<CenterKey>>(0.33, CenterKey{{-1.2558024544068163, 0.38112841375594236}, {0.0, 0.0}}),
 		std::make_shared<KeyFrame<CenterKey>>(0.433, CenterKey{{-0.8392324486465885, 0.37356936504006194}, {0.0, 0.0}}),

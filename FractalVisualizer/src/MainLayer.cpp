@@ -177,50 +177,42 @@ static T map(const T& x, const T& x0, const T& x1, const T& y0, const T& y1)
 	return y0 + ((y1 - y0) / (x1 - x0)) * (x - x0);
 }
 
-static double exp_interp(double ratio, double t)
+
+template<typename T>
+double InterpolateArray(const std::vector<T>& array, double t)
 {
-	if (ratio == 1)
-		return t;
-	else
-		return (std::pow(ratio, t) - 1.0) / (ratio - 1.0);
-}
+	double x = map(t, 0.0, 1.0, 0.0, (double)(array.size() - 1));
 
-template<typename T, typename S>
-T Hermite(const KeyFrame<T>& p0, const KeyFrame<T>& p1, const T& v0, const T& v1, S t)
-{
-	t = t - p0.t;
-	S t1 = p1.t - p0.t;
+	if (x == std::floor(x))
+		return array[(int)x];
 
-	T a = (S(2) * (p0.val - p1.val) + t1 * (v0 + v1)) / std::pow(t1, 3);
-	T b = -(S(3) * (p0.val - p1.val) + t1 * (S(2) * v0 + v1)) / std::pow(t1, 2);
-	T c = v0;
-	T d = p0.val;
-
-	return a * t * t * t + b * t * t + c * t + d;
+	int n = (int)x;
+	double lt = x - n;
+	T a = array[n];
+	T b = array[n+1];
+	return a * (1.0 - lt) + b * lt;
 }
 
 #define N_SAMPLES 1000
 static ImPlotPoint centerPoints[N_SAMPLES];
-
-static ImPlotPoint plot2[N_SAMPLES];
-static ImPlotPoint plot3[N_SAMPLES];
+static ImPlotPoint centerXPoints[N_SAMPLES];
+static ImPlotPoint centerYPoints[N_SAMPLES];
+static ImPlotPoint radiusPoints[N_SAMPLES];
 
 void MainLayer::UpdatePlots()
 {
-	m_VideoRenderer.Update();
-	glm::dvec2 center = m_VideoRenderer.GetCenter(0);
-	centerPoints[0] = ImPlotPoint(center.x, center.y);
-	double dt = 1 / (N_SAMPLES - 1.0);
-	for (size_t n = 1; n < N_SAMPLES; n++)
+	m_VideoRenderer.InvalidateRadius();
+	m_VideoRenderer.InvalidateCenter();
+	for (size_t n = 0; n < N_SAMPLES; n++)
 	{
 		double t = n / (double)(N_SAMPLES - 1);
 
-		// glm::dvec2 center = m_VideoRenderer.IncrCenter(dt);
 		glm::dvec2 center = m_VideoRenderer.GetCenter(t);
 		centerPoints[n] = ImPlotPoint(center.x, center.y);
+		centerXPoints[n] = ImPlotPoint(t, center.x);
+		centerYPoints[n] = ImPlotPoint(t, center.y);
 
-		plot2[n] = ImPlotPoint(t, center.x);
-		plot3[n] = ImPlotPoint(t, center.y);
+		radiusPoints[n] = ImPlotPoint(t, m_VideoRenderer.GetRadius(t));
 	}
 }
 
@@ -239,6 +231,43 @@ void MainLayer::OnImGuiRender()
 
 	if (ImGui::IsKeyPressed(ImGuiKey_S))
 		m_ShowStyle = !m_ShowStyle;
+
+	if (ImGui::Begin("Plots"))
+	{
+		if (ImPlot::BeginPlot("##Center", ImVec2(-1, -1), ImPlotFlags_Equal))
+		{
+			ImPlot::PlotLine("Spline", &centerPoints[0].x, &centerPoints[0].y, N_SAMPLES, 0, 0, sizeof(ImPlotPoint));
+			ImPlot::PlotLine("x", &centerXPoints[0].x, &centerXPoints[0].y, N_SAMPLES, 0, 0, sizeof(ImPlotPoint));
+			ImPlot::PlotLine("y", &centerYPoints[0].x, &centerYPoints[0].y, N_SAMPLES, 0, 0, sizeof(ImPlotPoint));
+
+			for (auto [i, p] : std::views::enumerate(m_VideoRenderer.centerKeyFrames))
+			{
+				auto id = reinterpret_cast<int>(p.get());
+
+				if (ImPlot::DragPoint(id, &p->val.pos.x, &p->val.pos.y, ImVec4(0.8f, 0.8f, 0.8f, 1.f)))
+					UpdatePlots();
+
+				if (ImPlot::DragPoint(id+1, &p->t, &p->val.pos.x, ImVec4(0.8f, 0.8f, 0.8f, 1.f)))
+				{
+					if (p->t < 0.0) p->t = 0.0;
+					if (p->t > 1.0) p->t = 1.0;
+					UpdatePlots();
+					SortKeyFrames(m_VideoRenderer.centerKeyFrames);
+				}
+
+				if (ImPlot::DragPoint(id+2, &p->t, &p->val.pos.y, ImVec4(0.8f, 0.8f, 0.8f, 1.f)))
+				{
+					if (p->t < 0.0) p->t = 0.0;
+					if (p->t > 1.0) p->t = 1.0;
+					UpdatePlots();
+					SortKeyFrames(m_VideoRenderer.centerKeyFrames);
+				}
+			}
+
+			ImPlot::EndPlot();
+		}
+	}
+	ImGui::End();
 
 #if 1
 //#ifdef GLCORE_DEBUG
@@ -424,10 +453,6 @@ void MainLayer::ShowMandelbrotWindow()
 				p->val.vel = (handle - p->val.pos) / 0.1;
 				UpdatePlots();
 			}
-			
-			// draw_list->AddLine(center, handle, 0xFF999999);
-			// draw_list->AddCircleFilled(center, 5, 0xFFAAAAAA);
-			// draw_list->AddCircleFilled(handle, 4, 0xFFAAFFFF);
 		}
 
 		if (showIters)
@@ -983,6 +1008,25 @@ void MainLayer::ShowRenderWindow()
 			{
 				if (ImGui::TreeNodeEx("Radius", ImGuiTreeNodeFlags_AllowItemOverlap))
 				{
+					if (ImPlot::BeginPlot("##Radius", ImVec2(-1, 0)))
+					{
+						ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
+						ImPlot::PlotLine("Radius", &radiusPoints[0].x, &radiusPoints[0].y, N_SAMPLES, 0, 0, sizeof(ImPlotPoint));
+
+						for (auto [i, p] : std::views::enumerate(m_VideoRenderer.radiusKeyFrames))
+						{
+							auto id = reinterpret_cast<int>(p.get());
+							if (ImPlot::DragPoint(id, &p->t, &p->val, ImVec4(0.8f, 0.8f, 0.8f, 1.f)))
+							{
+								if (p->t < 0.0) p->t = 0.0;
+								if (p->t > 1.0) p->t = 1.0;
+								UpdatePlots();
+								SortKeyFrames(m_VideoRenderer.radiusKeyFrames);
+							}
+						}
+
+						ImPlot::EndPlot();
+					}
 					if (EditKeyFrames<double>(data.radiusKeyFrames, fract.GetRadius(), m_PreviewT, [&fract](double& r)
 						{
 							return DragDoubleR("##radius", &r, fract.GetRadius(), 0.01f, 1e-15, 50, "%e", ImGuiSliderFlags_Logarithmic);

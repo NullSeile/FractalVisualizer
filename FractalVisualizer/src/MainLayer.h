@@ -52,6 +52,8 @@ private:
 	void ShowRenderWindow();
 	void ShowPreviewWindow();
 
+	void ShowCenterKeyFrames(const FractalVisualizer& fract);
+
 	bool m_VSync = true;
 
 	float m_FrameRate = 0;
@@ -65,13 +67,15 @@ private:
 	bool m_SmoothZoom = true;
 	int m_EqExponent = 2;
 
+	bool m_ShowAnimationCenter = false;
+
 	State m_State = State::Exploring;
 
 	bool m_ShouldUpdatePreview = true;
 	float m_PreviewT = 0.0;
 	bool m_PreviewMinimized = true;
 	int m_RenderColorIndex = 0;
-	FractalVisualizer& m_SelectedFractal;
+	FractalVisualizer* m_SelectedFractal;
 	VideoRenderer m_VideoRenderer;
 
 	void UpdatePlots();

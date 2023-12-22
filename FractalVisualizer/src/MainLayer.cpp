@@ -27,7 +27,7 @@ MainLayer::MainLayer()
 	, m_Mandelbrot(m_MandelbrotSrcPath)
 	, m_JuliaSrcPath("assets/julia.glsl")
 	, m_Julia(m_JuliaSrcPath)
-	, m_SelectedFractal(m_Mandelbrot)
+	, m_SelectedFractal(&m_Mandelbrot)
 {
 	RefreshColorFunctions();
 
@@ -394,6 +394,45 @@ bool DragPoint(int n_id, glm::dvec2* point, const FractalVisualizer& fract, int 
     return modified;
 }
 
+void MainLayer::ShowCenterKeyFrames(const FractalVisualizer& fract)
+{
+	ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+	ImVector<ImVec2> points;
+	points.reserve(N_SAMPLES);
+	for (int i = 0; i < N_SAMPLES; i++)
+	{
+		auto c = centerPoints[i];
+		points.push_back(FractToWindow({c.x, c.y}, fract, m_ResolutionPercentage));
+	}
+	draw_list->AddPolyline(points.begin(), points.size(), 0xFFFFFFFF, 0, 1.5);
+
+	// for (const auto& p : m_VideoRenderer.centerKeyFrames)
+	for (auto [i, p] : std::views::enumerate(m_VideoRenderer.centerKeyFrames))
+	{
+		bool hover = false;
+		if (DragPoint(2*i, &(p->val.pos), fract, m_ResolutionPercentage, ImVec4(1, 1, 1, 1), 5, 0, nullptr, &hover))
+		{
+			UpdatePlots();
+		}
+		if (hover && ImGui::IsMouseDoubleClicked(0))
+		{
+			if (p->val.vel == glm::dvec2(0))
+				p->val.vel = glm::dvec2(0.0, fract.GetRadius());
+			else
+				p->val.vel = glm::dvec2(0);
+			UpdatePlots();
+		}
+
+		auto handle = p->val.pos + 0.1*p->val.vel;
+		if (DragPoint(2*i+1, &handle, fract, m_ResolutionPercentage, ImVec4(0.8f, 0.8f, 0.8f, 0.9f), 4))
+		{
+			p->val.vel = (handle - p->val.pos) / 0.1;
+			UpdatePlots();
+		}
+	}
+}
+
 void MainLayer::ShowMandelbrotWindow()
 {
 	ImGuiIO& io = ImGui::GetIO();
@@ -419,57 +458,11 @@ void MainLayer::ShowMandelbrotWindow()
 		static glm::dvec2 c;
 		PersistentMiddleClick(showIters, c, m_Mandelbrot, m_ResolutionPercentage);
 
-		ImDrawList* draw_list = ImGui::GetWindowDrawList();
-
-		ImVector<ImVec2> points;
-		points.reserve(N_SAMPLES);
-		for (int i = 0; i < N_SAMPLES; i++)
-		{
-			auto c = centerPoints[i];
-			points.push_back(FractToWindow({c.x, c.y}, m_Mandelbrot, m_ResolutionPercentage));
-		}
-		draw_list->AddPolyline(points.begin(), points.size(), 0xFFFFFFFF, 0, 1.5);
-
-		// for (const auto& p : m_VideoRenderer.centerKeyFrames)
-		for (auto [i, p] : std::views::enumerate(m_VideoRenderer.centerKeyFrames))
-		{
-			bool hover = false;
-			if (DragPoint(2*i, &(p->val.pos), m_Mandelbrot, m_ResolutionPercentage, ImVec4(1, 1, 1, 1), 5, 0, nullptr, &hover))
-			{
-				UpdatePlots();
-			}
-			if (hover && ImGui::IsMouseDoubleClicked(0))
-			{
-				if (p->val.vel == glm::dvec2(0))
-					p->val.vel = glm::dvec2(0.0, m_Mandelbrot.GetRadius());
-				else
-					p->val.vel = glm::dvec2(0);
-				UpdatePlots();
-			}
-
-			auto handle = p->val.pos + 0.1*p->val.vel;
-			if (DragPoint(2*i+1, &handle, m_Mandelbrot, m_ResolutionPercentage, ImVec4(0.8f, 0.8f, 0.8f, 0.9f), 4))
-			{
-				p->val.vel = (handle - p->val.pos) / 0.1;
-				UpdatePlots();
-			}
-		}
-
 		if (showIters)
 			DrawIterations(c, c, m_IterationsColor, m_Mandelbrot, m_ResolutionPercentage);
 
-		if (ImGui::IsWindowHovered())
-		{
-			ImVec2 mousePos = WindowPosToImagePos(ImGui::GetMousePos(), m_ResolutionPercentage);
-
-			// Right click to set `julia c`
-			if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) ||
-				(ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0) && (io.MouseDelta.x != 0 || io.MouseDelta.y != 0)))
-			{
-				m_JuliaC = m_Mandelbrot.MapCoordsToPos(mousePos);
-				m_Julia.ResetRender();
-			}
-		}
+		if (m_ShowAnimationCenter && m_SelectedFractal == &m_Mandelbrot)
+			ShowCenterKeyFrames(m_Mandelbrot);
 	}
 	ImGui::End();
 	ImGui::PopStyleVar();
@@ -500,6 +493,9 @@ void MainLayer::ShowJuliaWindow()
 
 		if (showIters)
 			DrawIterations(z, m_JuliaC, m_IterationsColor, m_Julia, m_ResolutionPercentage);
+
+		if (m_ShowAnimationCenter && m_SelectedFractal == &m_Julia)
+			ShowCenterKeyFrames(m_Julia);
 
 	}
 	ImGui::End();
@@ -849,7 +845,7 @@ void MainLayer::ShowControlsWindow()
 }
 
 template<typename T>
-bool EditKeyFrames(KeyFrameList<T>& keyFrames, T new_val, float new_t, std::function<bool(T&)> value_edit)
+bool EditKeyFrames(KeyFrameList<T>& keyFrames, T new_val, double new_t, std::function<bool(T&)> value_edit)
 {
 	bool val_changed = false;
 	bool edited_time = false;
@@ -965,7 +961,6 @@ void MainLayer::ShowRenderWindow()
 			ImGui::PushID("Video");
 
 			auto& data = m_VideoRenderer;
-			auto& fract = m_SelectedFractal;
 
 			//bool rendering_video = m_State == State::Rendering;
 			if (ImGui::BeginPopupModal("Rendering Video", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
@@ -982,11 +977,13 @@ void MainLayer::ShowRenderWindow()
 			static int fractal_index = 0;
 			if (ImGui::Combo("Fractal", &fractal_index, fractal_names, IM_ARRAYSIZE(fractal_names)))
 			{
-				fract = fractal_index == 0 ? m_Mandelbrot : m_Julia;
+				m_SelectedFractal = fractal_index == 0 ? &m_Mandelbrot : &m_Julia;
 				const auto& path = fractal_index == 0 ? m_MandelbrotSrcPath : m_JuliaSrcPath;
-				data.Prepare(path, fract);
+				data.Prepare(path, *m_SelectedFractal);
 				m_ShouldUpdatePreview = true;
 			}
+
+			auto fract = m_SelectedFractal;
 
 			if (ImGui::InputInt2("Resolution", glm::value_ptr(data.resolution)))
 				m_ShouldUpdatePreview = true;
@@ -1008,28 +1005,28 @@ void MainLayer::ShowRenderWindow()
 			{
 				if (ImGui::TreeNodeEx("Radius", ImGuiTreeNodeFlags_AllowItemOverlap))
 				{
-					if (ImPlot::BeginPlot("##Radius", ImVec2(-1, 0)))
-					{
-						ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
-						ImPlot::PlotLine("Radius", &radiusPoints[0].x, &radiusPoints[0].y, N_SAMPLES, 0, 0, sizeof(ImPlotPoint));
+					// if (ImPlot::BeginPlot("##Radius", ImVec2(-1, 500)))
+					// {
+					// 	ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
+					// 	ImPlot::PlotLine("Radius", &radiusPoints[0].x, &radiusPoints[0].y, N_SAMPLES, 0, 0, sizeof(ImPlotPoint));
 
-						for (auto [i, p] : std::views::enumerate(m_VideoRenderer.radiusKeyFrames))
-						{
-							auto id = reinterpret_cast<int>(p.get());
-							if (ImPlot::DragPoint(id, &p->t, &p->val, ImVec4(0.8f, 0.8f, 0.8f, 1.f)))
-							{
-								if (p->t < 0.0) p->t = 0.0;
-								if (p->t > 1.0) p->t = 1.0;
-								UpdatePlots();
-								SortKeyFrames(m_VideoRenderer.radiusKeyFrames);
-							}
-						}
+					// 	for (auto [i, p] : std::views::enumerate(m_VideoRenderer.radiusKeyFrames))
+					// 	{
+					// 		auto id = reinterpret_cast<int>(p.get());
+					// 		if (ImPlot::DragPoint(id, &p->t, &p->val, ImVec4(0.8f, 0.8f, 0.8f, 1.f)))
+					// 		{
+					// 			if (p->t < 0.0) p->t = 0.0;
+					// 			if (p->t > 1.0) p->t = 1.0;
+					// 			UpdatePlots();
+					// 			SortKeyFrames(m_VideoRenderer.radiusKeyFrames);
+					// 		}
+					// 	}
 
-						ImPlot::EndPlot();
-					}
-					if (EditKeyFrames<double>(data.radiusKeyFrames, fract.GetRadius(), m_PreviewT, [&fract](double& r)
+					// 	ImPlot::EndPlot();
+					// }
+					if (EditKeyFrames<double>(data.radiusKeyFrames, fract->GetRadius(), m_PreviewT, [&fract](double& r)
 						{
-							return DragDoubleR("##radius", &r, fract.GetRadius(), 0.01f, 1e-15, 50, "%e", ImGuiSliderFlags_Logarithmic);
+							return DragDoubleR("##radius", &r, fract->GetRadius(), 0.01f, 1e-15, 50, "%e", ImGuiSliderFlags_Logarithmic);
 						}))
 					{
 						m_ShouldUpdatePreview = true;
@@ -1038,15 +1035,24 @@ void MainLayer::ShowRenderWindow()
 
 					ImGui::TreePop();
 				}
-				if (ImGui::TreeNodeEx("Center", ImGuiTreeNodeFlags_AllowItemOverlap))
+				bool open = ImGui::TreeNodeEx("Center", ImGuiTreeNodeFlags_AllowItemOverlap);
+
+				auto icon = m_ShowAnimationCenter ? ICON_MD_VISIBILITY_OFF : ICON_MD_VISIBILITY;
+				ImGui::SameLine();
+				// if (ImGui::InvisibleButton(icon, ImVec2{0, 0}))
+				// if (ImGui::SmallButton(icon))
+				if (ImGui::Button(icon))
+					m_ShowAnimationCenter = !m_ShowAnimationCenter;
+				
+				if (open)
 				{
-					if (EditKeyFrames<CenterKey>(data.centerKeyFrames, {fract.GetCenter(), {0.0, 0.0}}, m_PreviewT, [&fract](CenterKey& c)
+					if (EditKeyFrames<CenterKey>(data.centerKeyFrames, {fract->GetCenter(), {0.0, 0.0}}, m_PreviewT, [&fract](CenterKey& c)
 						{
 							bool val_changed = false;
 							ImGui::BeginGroup();
-							val_changed |= DragDouble2R("Center##center", glm::value_ptr(c.pos), fract.GetCenter(), (float)fract.GetRadius() / 70.f, -2.0, 2.0, "%.15f");
+							val_changed |= DragDouble2R("Center##center", glm::value_ptr(c.pos), fract->GetCenter(), (float)fract->GetRadius() / 70.f, -2.0, 2.0, "%.15f");
 							if (ImGui::TreeNode("Velocity")) {
-								val_changed |= DragDouble2("##vel", glm::value_ptr(c.vel), (float)fract.GetRadius() / 70.f, -2.0, 2.0, "%.15f");
+								val_changed |= DragDouble2("##vel", glm::value_ptr(c.vel), (float)fract->GetRadius() / 70.f, -2.0, 2.0, "%.15f");
 								ImGui::TreePop();
 							}
 							ImGui::EndGroup();
@@ -1056,15 +1062,6 @@ void MainLayer::ShowRenderWindow()
 					{
 						m_ShouldUpdatePreview = true;
 						UpdatePlots();
-						// LOG_INFO("{");
-						// for (auto c : data.centerKeyFrames)
-						// 	LOG_INFO("  ({}, ui::Vec2f{{{}, {}}}),", c->t, c->val.x, c->val.y);
-						// LOG_INFO("}");
-
-						// LOG_INFO("{");
-						// for (auto c : data.radiusKeyFrames)
-						// 	LOG_INFO("  ({}, {}),", c->t, c->val);
-						// LOG_INFO("}");
 					}
 
 					ImGui::TreePop();
@@ -1100,7 +1097,7 @@ void MainLayer::ShowRenderWindow()
 					if (DragDoubleR("Amplitude", &data.cAmplitude, 1e-3, 0.01f, 1e-15, 50, "%e", ImGuiSliderFlags_Logarithmic))
 						m_ShouldUpdatePreview = true;
 					
-					if (DragDouble2R("Jula C Center", glm::value_ptr(data.cCenter), m_JuliaC, (float)fract.GetRadius() / 70.f, -2.0, 2.0, "%.15f"))
+					if (DragDouble2R("Jula C Center", glm::value_ptr(data.cCenter), m_JuliaC, (float)fract->GetRadius() / 70.f, -2.0, 2.0, "%.15f"))
 						m_ShouldUpdatePreview = true;
 
 					ImGui::TreePop();
@@ -1118,7 +1115,7 @@ void MainLayer::ShowRenderWindow()
 
 					const auto& path = fractal_index == 0 ? m_MandelbrotSrcPath : m_JuliaSrcPath;
 
-					data.Prepare(path, fract);
+					data.Prepare(path, *fract);
 
 					auto width = data.resolution.x;
 					auto height = data.resolution.y;
@@ -1183,7 +1180,7 @@ void MainLayer::ShowPreviewWindow()
 
 		if (ImGui::Button("Apply To Fract"))
 		{
-			auto& fract = m_SelectedFractal;
+			auto& fract = *m_SelectedFractal;
 
 			fract.SetCenter(data.fract->GetCenter());
 			fract.SetRadius(data.fract->GetRadius());

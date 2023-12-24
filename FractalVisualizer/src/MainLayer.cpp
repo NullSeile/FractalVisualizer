@@ -95,6 +95,7 @@ void MainLayer::OnAttach()
 
 	ImFontConfig config;
 	config.MergeMode = true;
+	config.GlyphOffset = { 0.f, 3.f };
 	config.GlyphMinAdvanceX = 13.0f; // Use if you want to make the icon monospaced
 	static const ImWchar icon_ranges[] = { (ImWchar)ICON_MIN_MD, (ImWchar)ICON_MAX_MD, 0 };
 	io.Fonts->AddFontFromFileTTF("assets/fonts/MaterialIcons-Regular.ttf", 13.0f, &config, icon_ranges);
@@ -234,7 +235,7 @@ void MainLayer::OnImGuiRender()
 
 	if (ImGui::Begin("Plots"))
 	{
-		if (ImPlot::BeginPlot("##Center", ImVec2(-1, -1), ImPlotFlags_Equal))
+		if (ImPlot::BeginPlot("##Center", ImVec2(-1, 700), ImPlotFlags_Equal))
 		{
 			ImPlot::PlotLine("Spline", &centerPoints[0].x, &centerPoints[0].y, N_SAMPLES, 0, 0, sizeof(ImPlotPoint));
 			ImPlot::PlotLine("x", &centerXPoints[0].x, &centerXPoints[0].y, N_SAMPLES, 0, 0, sizeof(ImPlotPoint));
@@ -247,7 +248,7 @@ void MainLayer::OnImGuiRender()
 				if (ImPlot::DragPoint(id, &p->val.pos.x, &p->val.pos.y, ImVec4(0.8f, 0.8f, 0.8f, 1.f)))
 					UpdatePlots();
 
-				if (ImPlot::DragPoint(id+1, &p->t, &p->val.pos.x, ImVec4(0.8f, 0.8f, 0.8f, 1.f)))
+				if (ImPlot::DragPoint(id+1, &p->t, &p->val.pos.x, ImVec4(0.8f, 0.8f, 0.8f, 1.f), 4.f, ImPlotDragToolFlags_Delayed))
 				{
 					if (p->t < 0.0) p->t = 0.0;
 					if (p->t > 1.0) p->t = 1.0;
@@ -255,12 +256,31 @@ void MainLayer::OnImGuiRender()
 					SortKeyFrames(m_VideoRenderer.centerKeyFrames);
 				}
 
-				if (ImPlot::DragPoint(id+2, &p->t, &p->val.pos.y, ImVec4(0.8f, 0.8f, 0.8f, 1.f)))
+				if (ImPlot::DragPoint(id+2, &p->t, &p->val.pos.y, ImVec4(0.8f, 0.8f, 0.8f, 1.f), 4.f, ImPlotDragToolFlags_Delayed))
 				{
 					if (p->t < 0.0) p->t = 0.0;
 					if (p->t > 1.0) p->t = 1.0;
 					UpdatePlots();
 					SortKeyFrames(m_VideoRenderer.centerKeyFrames);
+				}
+			}
+
+			ImPlot::EndPlot();
+		}
+		if (ImPlot::BeginPlot("##Radius", ImVec2(-1, 700)))
+		{
+			ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
+			ImPlot::PlotLine("Radius", &radiusPoints[0].x, &radiusPoints[0].y, N_SAMPLES, 0, 0, sizeof(ImPlotPoint));
+
+			for (auto [i, p] : std::views::enumerate(m_VideoRenderer.radiusKeyFrames))
+			{
+				auto id = reinterpret_cast<int>(p.get());
+				if (ImPlot::DragPoint(id, &p->t, &p->val, ImVec4(0.8f, 0.8f, 0.8f, 1.f), 4.f, ImPlotDragToolFlags_Delayed))
+				{
+					if (p->t < 0.0) p->t = 0.0;
+					if (p->t > 1.0) p->t = 1.0;
+					UpdatePlots();
+					SortKeyFrames(m_VideoRenderer.radiusKeyFrames);
 				}
 			}
 
@@ -411,7 +431,7 @@ void MainLayer::ShowCenterKeyFrames(const FractalVisualizer& fract)
 	for (auto [i, p] : std::views::enumerate(m_VideoRenderer.centerKeyFrames))
 	{
 		bool hover = false;
-		if (DragPoint(2*i, &(p->val.pos), fract, m_ResolutionPercentage, ImVec4(1, 1, 1, 1), 5, 0, nullptr, &hover))
+		if (DragPoint(2*(int)i, &(p->val.pos), fract, m_ResolutionPercentage, ImVec4(1, 1, 1, 1), 5, 0, nullptr, &hover))
 		{
 			UpdatePlots();
 		}
@@ -425,7 +445,7 @@ void MainLayer::ShowCenterKeyFrames(const FractalVisualizer& fract)
 		}
 
 		auto handle = p->val.pos + 0.1*p->val.vel;
-		if (DragPoint(2*i+1, &handle, fract, m_ResolutionPercentage, ImVec4(0.8f, 0.8f, 0.8f, 0.9f), 4))
+		if (DragPoint(2*(int)i + 1, &handle, fract, m_ResolutionPercentage, ImVec4(0.8f, 0.8f, 0.8f, 0.9f), 4))
 		{
 			p->val.vel = (handle - p->val.pos) / 0.1;
 			UpdatePlots();
@@ -453,6 +473,20 @@ void MainLayer::ShowMandelbrotWindow()
 		// Events
 		FractalHandleInteract(m_Mandelbrot, m_ResolutionPercentage);
 		FractalHandleZoom(m_Mandelbrot, m_ResolutionPercentage, m_FrameRate, m_SmoothZoom, m_MandelbrotZoomData);
+
+		if (ImGui::IsWindowHovered())
+		{
+			// ImVec2 mousePos = WindowPosToImagePos(ImGui::GetMousePos(), m_ResolutionPercentage);
+
+			// Right click to set `julia c`
+			if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) ||
+				(ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0) && (io.MouseDelta.x != 0 || io.MouseDelta.y != 0)))
+			{
+				m_JuliaC = WindowToFract(ImGui::GetMousePos(), m_Mandelbrot, m_ResolutionPercentage);
+				// m_JuliaC = m_Mandelbrot.MapCoordsToPos(mousePos);
+				m_Julia.ResetRender();
+			}
+		}
 
 		static bool showIters = false;
 		static glm::dvec2 c;
@@ -1005,25 +1039,6 @@ void MainLayer::ShowRenderWindow()
 			{
 				if (ImGui::TreeNodeEx("Radius", ImGuiTreeNodeFlags_AllowItemOverlap))
 				{
-					// if (ImPlot::BeginPlot("##Radius", ImVec2(-1, 500)))
-					// {
-					// 	ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
-					// 	ImPlot::PlotLine("Radius", &radiusPoints[0].x, &radiusPoints[0].y, N_SAMPLES, 0, 0, sizeof(ImPlotPoint));
-
-					// 	for (auto [i, p] : std::views::enumerate(m_VideoRenderer.radiusKeyFrames))
-					// 	{
-					// 		auto id = reinterpret_cast<int>(p.get());
-					// 		if (ImPlot::DragPoint(id, &p->t, &p->val, ImVec4(0.8f, 0.8f, 0.8f, 1.f)))
-					// 		{
-					// 			if (p->t < 0.0) p->t = 0.0;
-					// 			if (p->t > 1.0) p->t = 1.0;
-					// 			UpdatePlots();
-					// 			SortKeyFrames(m_VideoRenderer.radiusKeyFrames);
-					// 		}
-					// 	}
-
-					// 	ImPlot::EndPlot();
-					// }
 					if (EditKeyFrames<double>(data.radiusKeyFrames, fract->GetRadius(), m_PreviewT, [&fract](double& r)
 						{
 							return DragDoubleR("##radius", &r, fract->GetRadius(), 0.01f, 1e-15, 50, "%e", ImGuiSliderFlags_Logarithmic);
@@ -1037,13 +1052,19 @@ void MainLayer::ShowRenderWindow()
 				}
 				bool open = ImGui::TreeNodeEx("Center", ImGuiTreeNodeFlags_AllowItemOverlap);
 
-				auto icon = m_ShowAnimationCenter ? ICON_MD_VISIBILITY_OFF : ICON_MD_VISIBILITY;
+				
+				ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{ 0.5f, 0 });
 				ImGui::SameLine();
-				// if (ImGui::InvisibleButton(icon, ImVec2{0, 0}))
-				// if (ImGui::SmallButton(icon))
-				if (ImGui::Button(icon))
+				ImGui::PopStyleVar();
+
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+
+				auto icon = m_ShowAnimationCenter ? ICON_MD_VISIBILITY : ICON_MD_VISIBILITY_OFF;
+				if (ImGui::SmallButton(icon))
 					m_ShowAnimationCenter = !m_ShowAnimationCenter;
 				
+				ImGui::PopStyleColor();
+
 				if (open)
 				{
 					if (EditKeyFrames<CenterKey>(data.centerKeyFrames, {fract->GetCenter(), {0.0, 0.0}}, m_PreviewT, [&fract](CenterKey& c)

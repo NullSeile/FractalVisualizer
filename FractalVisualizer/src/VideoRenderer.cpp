@@ -35,10 +35,10 @@ T CatmullRom(const KeyFrame<T>& p0, const KeyFrame<T>& p1, const KeyFrame<T>& p2
 	const T& r2 = p2.val;
 	const T& r3 = p3.val;
 
-	const T a = -((r0 + r1 - r2 - r3) * t1 - 4.0 * r1 + 4.0 * r2) / (2.0 * t1 * t1 * t1);
-	const T b = ((2.0 * r0 + r1 - 2.0 * r2 - r3) * t1 - 6.0 * r1 + 6.0 * r2) / (2.0 * t1 * t1);
-	const T c = (r2 - r0) / 2.0;
-	const T d = r1;
+	const T a = (T)(-((r0 + r1 - r2 - r3) * t1 - 4.0 * r1 + 4.0 * r2) / (2.0 * t1 * t1 * t1));
+	const T b = (T)(((2.0 * r0 + r1 - 2.0 * r2 - r3) * t1 - 6.0 * r1 + 6.0 * r2) / (2.0 * t1 * t1));
+	const T c = (T)((r2 - r0) / 2.0);
+	const T d = (T)r1;
 
 	return (T)(a * t * t * t + b * t * t + c * t + d);
 }

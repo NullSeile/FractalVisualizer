@@ -1287,6 +1287,7 @@ void MainLayer::RefreshColorFunctions()
 		m_Colors.emplace_back(colorFn);
 	}
 
+	m_ColorsName.clear();
 	m_ColorsName.reserve(m_Colors.size());
 	for (const auto& c : m_Colors)
 		m_ColorsName.push_back(c->GetName().c_str());

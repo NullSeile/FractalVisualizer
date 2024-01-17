@@ -85,6 +85,10 @@ private:
 	std::vector<std::optional<std::string>> m_ColorsError;
 	std::vector<const char*> m_ColorsName;
 	size_t m_SelectedColor = 0;
+
+	std::shared_ptr<ColorFunction> SetColorFunction(size_t index);
+	std::shared_ptr<ColorFunction> GetColorFunction(size_t index) const;
+
 	ImColor m_IterationsColor = { 1.f, 1.f, 1.f, 0.9f };
 	bool m_ShowHelp = true;
 	bool m_ShowDemo = false;

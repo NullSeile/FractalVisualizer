@@ -3,6 +3,10 @@
 #include <GLCore.h>
 #include <GLCoreUtils.h>
 
+class custom_error : public std::runtime_error {
+	using std::runtime_error::runtime_error;
+};
+
 enum class UniformType
 {
 	FLOAT,
@@ -82,11 +86,15 @@ private:
 
 public:
 
-	ColorFunction(const std::string& src, const std::string& name);
+	ColorFunction(std::string_view src, std::string_view name);
+	ColorFunction(std::string_view name);
 	ColorFunction(const ColorFunction& other);
 	~ColorFunction();
 
+
 	static const std::shared_ptr<ColorFunction> Default;
+
+	void Initialize(std::string_view src);
 
 	void UpdateUniformsToShader(GLuint shader) const;
 

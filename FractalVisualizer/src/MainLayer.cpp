@@ -33,9 +33,6 @@ MainLayer::MainLayer()
 
 	GLCore::Application::Get().GetWindow().SetVSync(m_VSync);
 
-	m_Mandelbrot.SetColorFunction(m_Colors[m_SelectedColor]);
-	m_Julia.SetColorFunction(m_Colors[m_SelectedColor]);
-
 	m_Mandelbrot.SetSetColor(m_SetColor);
 	m_Julia.SetSetColor(m_SetColor);
 
@@ -54,7 +51,7 @@ MainLayer::MainLayer()
 	m_Mandelbrot.SetCenter({ -0.5, 0 });
 	m_Julia.SetRadius(1.3);
 
-	m_VideoRenderer.SetColorFunction(m_Colors[m_RenderColorIndex]);
+	m_VideoRenderer.SetColorFunction(GetColorFunction(m_SelectedColor));
 	m_VideoRenderer.Prepare(m_MandelbrotSrcPath, m_Mandelbrot);
 
 	m_MandelbrotZoomData.start_radius = m_Mandelbrot.GetRadius();
@@ -73,6 +70,23 @@ MainLayer::~MainLayer()
 		glDeleteTextures(1, &prev.textureID);
 		glDeleteProgram(prev.shaderID);
 	}
+}
+
+std::shared_ptr<ColorFunction> MainLayer::GetColorFunction(size_t index) const
+{
+	if (m_ColorsError[index])
+		return ColorFunction::Default;
+	else
+		return m_Colors[index];
+}
+
+std::shared_ptr<ColorFunction> MainLayer::SetColorFunction(size_t index)
+{
+	m_SelectedColor = index;
+	auto color = GetColorFunction(index);
+	m_Mandelbrot.SetColorFunction(color);
+	m_Julia.SetColorFunction(color);
+	return color;
 }
 
 void MainLayer::OnAttach()
@@ -220,7 +234,7 @@ void MainLayer::UpdatePlots()
 template<typename T>
 void SortKeyFrames(KeyFrameList<T>& keyFrames)
 {
-	std::sort(keyFrames.begin(), keyFrames.end(), [](auto a, auto b) { return a->t < b->t; });
+	std::ranges::sort(keyFrames, [](auto a, auto b) { return a->t < b->t; });
 }
 
 void MainLayer::OnImGuiRender()
@@ -327,7 +341,7 @@ void MainLayer::OnImGuiRender()
 
 void FractalHandleZoom(FractalVisualizer& fract, int resolutionPercentage, float fps, bool smoothZoom, SmoothZoomData& data)
 {
-	auto io = ImGui::GetIO();
+	auto& io = ImGui::GetIO();
 
 	if (ImGui::IsWindowHovered() && io.MouseWheel != 0)
 	{
@@ -482,14 +496,11 @@ void MainLayer::ShowMandelbrotWindow()
 
 		if (ImGui::IsWindowHovered())
 		{
-			// ImVec2 mousePos = WindowPosToImagePos(ImGui::GetMousePos(), m_ResolutionPercentage);
-
 			// Right click to set `julia c`
 			if (ImGui::IsMouseClicked(ImGuiMouseButton_Right) ||
 				(ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0) && (io.MouseDelta.x != 0 || io.MouseDelta.y != 0)))
 			{
 				m_JuliaC = WindowToFract(ImGui::GetMousePos(), m_Mandelbrot, m_ResolutionPercentage);
-				// m_JuliaC = m_Mandelbrot.MapCoordsToPos(mousePos);
 				m_Julia.ResetRender();
 			}
 		}
@@ -701,19 +712,8 @@ void MainLayer::ShowControlsWindow()
 					ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_Button]);
 
 				if (ImGui::ImageButton((ImTextureID)(intptr_t)m_ColorsPreview[i].textureID, button_size))
-				{
-					m_SelectedColor = i;
-					if (m_ColorsError[m_SelectedColor])
-					{
-						m_Mandelbrot.SetColorFunction(ColorFunction::Default);
-						m_Julia.SetColorFunction(ColorFunction::Default);
-					}
-					else
-					{
-						m_Mandelbrot.SetColorFunction(m_Colors[m_SelectedColor]);
-						m_Julia.SetColorFunction(m_Colors[m_SelectedColor]);
-					}
-				}
+					SetColorFunction(i);
+				
 				if (ImGui::IsItemHovered() && GImGui->HoveredIdTimer > 0.5f)
 					ImGui::SetTooltip(m_Colors[i]->GetName().c_str());
 
@@ -1037,7 +1037,7 @@ void MainLayer::ShowRenderWindow()
 
 			if (ComboR("Color Function", &m_RenderColorIndex, (int)m_SelectedColor, m_ColorsName.data(), (int)m_ColorsName.size()))
 			{
-				data.SetColorFunction(m_Colors[m_RenderColorIndex]);
+				data.SetColorFunction(GetColorFunction(m_RenderColorIndex));
 				m_ShouldUpdatePreview = true;
 			}
 
@@ -1099,11 +1099,11 @@ void MainLayer::ShowRenderWindow()
 					{
 						if (ImGui::TreeNodeEx(u->displayName.c_str(), ImGuiTreeNodeFlags_AllowItemOverlap))
 						{
-							const auto& color = m_Colors[m_SelectedColor];
 							float new_val = 1.f;
-							if (data.color->GetName() == color->GetName())
+							if (m_SelectedColor == m_RenderColorIndex)
 							{
-								auto it = std::find_if(color->GetUniforms().begin(), color->GetUniforms().end(), [u](Uniform* p) { return p->name == u->name; });
+								auto color = GetColorFunction(m_SelectedColor);
+								auto it = std::ranges::find_if(color->GetUniforms(), [u](Uniform* p) { return p->name == u->name; });
 								if (it != color->GetUniforms().end())
 									new_val = ((FloatUniform*)*it)->val;
 							}
@@ -1212,9 +1212,7 @@ void MainLayer::ShowPreviewWindow()
 			fract.SetCenter(data.fract->GetCenter());
 			fract.SetRadius(data.fract->GetRadius());
 
-			auto color = m_Colors[m_RenderColorIndex];
-			fract.SetColorFunction(color);
-
+			auto color = SetColorFunction(m_RenderColorIndex);
 			for (int i = 0; i < color->GetUniforms().size(); i++)
 			{
 				auto dest = (FloatUniform*)color->GetUniforms()[i];
@@ -1302,16 +1300,30 @@ void MainLayer::RefreshColorFunctions()
 	for (const auto& path : std::filesystem::directory_iterator("assets/colors"))
 	{
 		std::ifstream colorSrc(path.path());
-		auto colorFn = std::make_shared<ColorFunction>(
-			std::string(std::istreambuf_iterator<char>(colorSrc), std::istreambuf_iterator<char>()),
-			path.path().filename().replace_extension().string()
-		);
-		auto error = GLCore::Utils::ValidateShader(colorFn->GetSource());
+
+		const auto& name = path.path().filename().replace_extension().string();
+		auto colorFn = std::make_shared<ColorFunction>(name);
+		
+		std::optional<std::string> error;
+		try
+		{
+			colorFn->Initialize(std::string(std::istreambuf_iterator<char>(colorSrc), std::istreambuf_iterator<char>()));
+			error = GLCore::Utils::ValidateShader(colorFn->GetSource());
+		}
+		catch (const custom_error& e)
+		{
+			error = e.what();
+		}
+		catch (const std::exception& e)
+		{
+			error = std::format("Uncatched error: '{}'\nMake sure that uniforms follow the format specified in the documentation.", e.what());
+		}
+
 		m_ColorsError.push_back(error);
 		if (error)
 			LOG_ERROR("{}", error.value());
 		
-		m_Colors.emplace_back(colorFn);
+		m_Colors.push_back(colorFn);
 	}
 
 	m_ColorsName.clear();
@@ -1396,14 +1408,5 @@ void main()
 		m_SelectedColor = 0;
 
 
-	if (m_ColorsError[m_SelectedColor])
-	{
-		m_Mandelbrot.SetColorFunction(ColorFunction::Default);
-		m_Julia.SetColorFunction(ColorFunction::Default);
-	}
-	else
-	{
-		m_Mandelbrot.SetColorFunction(m_Colors[m_SelectedColor]);
-		m_Julia.SetColorFunction(m_Colors[m_SelectedColor]);
-	}
+	SetColorFunction(m_SelectedColor);
 }

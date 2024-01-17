@@ -10,9 +10,21 @@ const std::shared_ptr<ColorFunction> ColorFunction::Default = std::make_shared<C
 	"default"
 );
 
-ColorFunction::ColorFunction(const std::string& src, const std::string& name) 
-	: m_src(src), m_name(name)
+ColorFunction::ColorFunction(std::string_view name)
+	: m_name(name)
 {
+}
+
+ColorFunction::ColorFunction(std::string_view src, std::string_view name) 
+	: m_name(name)
+{
+	Initialize(src);
+}
+
+void ColorFunction::Initialize(std::string_view src)
+{
+	m_src = src;
+
 	for (size_t start; (start = m_src.find(uniform_s + ' ')) != std::string::npos;)
 	{
 		size_t end = m_src.substr(start).find_first_of(';') + start;
@@ -61,8 +73,8 @@ ColorFunction::ColorFunction(const std::string& src, const std::string& name)
 		}
 		else
 		{
-			LOG_ERROR("Uniform type `{0}' is not valid", type);
-			exit(EXIT_FAILURE);
+			LOG_ERROR("Uniform type `{0}` is not valid", type);
+			throw custom_error(std::format("Uniform type `{0}` is not valid", type));
 		}
 
 		m_src.erase(start, end - start);

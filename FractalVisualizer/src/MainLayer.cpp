@@ -1119,19 +1119,22 @@ void MainLayer::ShowRenderWindow()
 					}
 					ImGui::TreePop();
 				}
-				if (ImGui::TreeNode("Jula C"))
+				if (fractal_index == 1)
 				{
-					ImGui::SameLine();
-					HelpMarker("This is a placeholder tool to edit the Julia C value.\nIt will be replaced with something similar to the center interpolation (hopefuly).");
+					if (ImGui::TreeNode("Jula C"))
+					{
+						ImGui::SameLine();
+						HelpMarker("This is a placeholder tool to edit the Julia C value.\nIt will be replaced with something similar to the center interpolation (hopefuly).");
 
-					double min = -2, max = 2;
-					if (DragDoubleR("Amplitude", &data.cAmplitude, 1e-3, 0.01f, 1e-15, 50, "%e", ImGuiSliderFlags_Logarithmic))
-						m_ShouldUpdatePreview = true;
-					
-					if (DragDouble2R("Jula C Center", glm::value_ptr(data.cCenter), m_JuliaC, (float)fract->GetRadius() / 70.f, -2.0, 2.0, "%.15f"))
-						m_ShouldUpdatePreview = true;
+						double min = -2, max = 2;
+						if (DragDoubleR("Amplitude", &data.cAmplitude, 1e-3, 0.01f, 1e-15, 50, "%e", ImGuiSliderFlags_Logarithmic))
+							m_ShouldUpdatePreview = true;
+						
+						if (DragDouble2R("Jula C Center", glm::value_ptr(data.cCenter), m_JuliaC, (float)fract->GetRadius() / 70.f, -2.0, 2.0, "%.15f"))
+							m_ShouldUpdatePreview = true;
 
-					ImGui::TreePop();
+						ImGui::TreePop();
+					}
 				}
 
 				ImGui::TreePop();

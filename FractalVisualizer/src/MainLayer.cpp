@@ -1241,28 +1241,29 @@ void MainLayer::ShowHelpWindow()
 		ImGui::BulletText("CTRL + left click to set the center to the mouse location.");
 		ImGui::BulletText("Middle mouse button to show the first iterations of the equation.");
 		ImGui::BulletText("Hold CTRL while releasing the middle mouse button to continuously show the\n"
-			"iterations.");
+						  "iterations.");
 
 		ImGui::Spacing();
 
 		ImGui::Text("FEATURES:");
 		ImGui::BulletText("All panels (including this one) can be moved and docked wherever you want.");
 		ImGui::BulletText("You can edit (or add) the color functions by editing (or adding) the .glsl\n"
-			"shader flies in the `./assets/colors` folder. In this files use the\n"
-			"preprocessor command `#uniform` to set a custom uniform which will be exposed\n"
-			"through the UI, under color function parameters. There are the following types\n"
-			"of uniforms:");
+						  "shader flies in the `./assets/colors` folder. In this files use the\n"
+						  "preprocessor command `#uniform` to set a custom uniform which will be exposed\n"
+						  "through the UI, under color function parameters. There are the following types\n"
+						  "of uniforms:");
 		ImGui::Indent();
 		{
-			ImGui::BulletText("`#uniform float <name> <default_value> <slider_increment> <min> <max>;`.\n"
-				"Either min or max can be set to `NULL` to indicate it is unbounded.");
-			ImGui::BulletText("`#uniform bool <name> <default_value>;`. The default value must be either `true`\n"
-				"or `false`.");
-			ImGui::BulletText("`#uniform color <default_red> <default_green> <default_blue>;`. The RGB values\n"
-				"must be between 0 and 1.");
+			ImGui::BulletText("`#uniform float <name> <display_name> <default_value> <slider_increment>\n"
+							  "<min> <max>;`. Either min or max can be set to `NULL` to indicate it is\n"
+							  "unbounded.");
+			ImGui::BulletText("`#uniform bool <name> <display_name> <default_value>;`. The default value\n"
+							  "must be either `true` or `false`.");
+			ImGui::BulletText("`#uniform color <name> <display_name> <default_red> <default_green>\n"
+							  "<default_blue>;`. The RGB values must be between 0 and 1.");
 
 			ImGui::Text("All uniform types accept an optional boolean parameter at the end (defaults to\n"
-				"`true`) which indicates whether this parameter should update the preview image.");
+						"`true`) which indicates whether this parameter should update the preview image.");
 		}
 		ImGui::Unindent();
 
@@ -1270,14 +1271,14 @@ void MainLayer::ShowHelpWindow()
 
 		ImGui::Text("TIPS:");
 		ImGui::BulletText("If the images are too noisy, try increasing the colorMult parameter in the\n"
-			"color function section of the controls panel.");
+						  "color function section of the controls panel.");
 		ImGui::BulletText("If the first iteration contains too much black parts and you can not\n"
-			"confortably pan the image, try increasing the number of iterations per\n"
-			"frame. It may reduce the framerate but it would increase the quality of the\n"
-			"first frame.");
+						  "confortably pan the image, try increasing the number of iterations per\n"
+						  "frame. It may reduce the framerate but it would increase the quality of the\n"
+						  "first frame.");
 		ImGui::BulletText("If the image ends up being too blurry after a while of rendering, try\n"
-			"limiting the maximum number of epochs. This option is located in the general\n"
-			"section of the controls panel.");
+						  "limiting the maximum number of epochs. This option is located in the general\n"
+						  "section of the controls panel.");
 	}
 	ImGui::End();
 }

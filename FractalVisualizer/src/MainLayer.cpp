@@ -192,7 +192,6 @@ static T map(const T& x, const T& x0, const T& x1, const T& y0, const T& y1)
 	return y0 + ((y1 - y0) / (x1 - x0)) * (x - x0);
 }
 
-
 template<typename T>
 double InterpolateArray(const std::vector<T>& array, double t)
 {
@@ -241,6 +240,7 @@ void MainLayer::OnImGuiRender()
 {
 	ImGui::DockSpaceOverViewport();
 
+#ifdef GLCORE_DEBUG
 	if (ImGui::Begin("Plots"))
 	{
 		if (ImPlot::BeginPlot("##Center", ImVec2(-1, 700), ImPlotFlags_Equal))
@@ -296,6 +296,7 @@ void MainLayer::OnImGuiRender()
 		}
 	}
 	ImGui::End();
+#endif
 
 #if 1
 //#ifdef GLCORE_DEBUG
@@ -1120,6 +1121,9 @@ void MainLayer::ShowRenderWindow()
 				}
 				if (ImGui::TreeNode("Jula C"))
 				{
+					ImGui::SameLine();
+					HelpMarker("This is a placeholder tool to edit the Julia C value.\nIt will be replaced with something similar to the center interpolation (hopefuly).");
+
 					double min = -2, max = 2;
 					if (DragDoubleR("Amplitude", &data.cAmplitude, 1e-3, 0.01f, 1e-15, 50, "%e", ImGuiSliderFlags_Logarithmic))
 						m_ShouldUpdatePreview = true;

@@ -44,32 +44,6 @@ T CatmullRom(const KeyFrame<T>& p0, const KeyFrame<T>& p1, const KeyFrame<T>& p2
 }
 
 template<typename T>
-T CatmullRomInterp(const KeyFrameList<T>& keys, double t)
-{
-	// Assuming ordered keyframes
-	if (t <= keys.front()->t)
-		return keys.front()->val;
-
-	if (t >= keys.back()->t)
-		return keys.back()->val;
-
-	for (int i = 0; i < keys.size() - 1; i++)
-	{
-		auto p1 = *keys[i + 0];
-		auto p2 = *keys[i + 1];
-
-		if (p1.t <= t && t <= p2.t)
-		{
-			auto p0 = i > 0 ? *keys[i - 1] : KeyFrame<T>(2.0 * p1.t - p2.t, T(2.0 * p1.val) - p2.val);
-			auto p3 = i < keys.size() - 2 ? *keys[i + 2] : KeyFrame<T>(2.0 * p2.t - p1.t, T(2.0 * p2.val) - p1.val);
-			return CatmullRom(p0, p1, p2, p3, t);
-		}
-	}
-	assert(false && "YO WTF?");
-	return T();
-}
-
-template<typename T>
 T Hermite(const KeyFrame<T>& p0, const KeyFrame<T>& p1, const T& v0, const T& v1, double t)
 {
 	t = t - p0.t;
@@ -111,6 +85,37 @@ double HermiteLength(const KeyFrame<CenterKey>& p0, const KeyFrame<CenterKey>& p
 		sum += glm::length(q - p);
 	}
 	return sum;
+}
+
+template<typename T>
+T CatmullRomInterp(const KeyFrameList<T>& keys, double t)
+{
+	// Assuming ordered keyframes
+	if (t <= keys.front()->t)
+		return keys.front()->val;
+
+	if (t >= keys.back()->t)
+		return keys.back()->val;
+
+	for (int i = 0; i < keys.size() - 1; i++)
+	{
+		auto p1 = *keys[i + 0];
+		auto p2 = *keys[i + 1];
+
+		if (p1.t <= t && t <= p2.t)
+		{
+			auto p0 = i > 0 ? *keys[i - 1] : KeyFrame<T>(2.0 * p1.t - p2.t, T(2.0 * p1.val) - p2.val);
+			auto p3 = i < keys.size() - 2 ? *keys[i + 2] : KeyFrame<T>(2.0 * p2.t - p1.t, T(2.0 * p2.val) - p1.val);
+
+			T v0 = (p2.val - p0.val) / (p2.t - p0.t);
+			T v1 = (p3.val - p1.val) / (p3.t - p1.t);
+
+			return Hermite<T>(p1, p2, v0, v1, t);
+			// return CatmullRom(p0, p1, p2, p3, t);
+		}
+	}
+	assert(false && "YO WTF?");
+	return T();
 }
 
 void VideoRenderer::Prepare(std::filesystem::path path, const FractalVisualizer& other)
@@ -224,7 +229,6 @@ double VideoRenderer::GetRadiusInteg(double t) const
 	return a * (1.0 - lt) + b * lt;
 }
 
-
 glm::dvec2 VideoRenderer::GetCenter(double t)
 {
 	assert(0.0 <= t && t <= 1.0);
@@ -269,7 +273,6 @@ glm::dvec2 VideoRenderer::GetCenter(double t)
 		total_length
 	);
 
-	
 	double step = 1e-4;
 	auto prev = Hermite(*a, *b, m_CurrentLocalT);
 	while (m_CurrentS * sign < target_length * sign)

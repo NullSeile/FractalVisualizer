@@ -21,7 +21,7 @@ struct Uniform
 	UniformType type;
 	bool update;
 
-	Uniform(const std::string& name, const std::string& displayName, UniformType type, bool update)
+	Uniform(std::string_view name, std::string_view displayName, UniformType type, bool update)
 		: name(name), displayName(displayName), type(type), update(update) {}
 
 	virtual void UpdateToShader(GLuint shader) = 0;
@@ -34,7 +34,7 @@ struct FloatUniform : public Uniform
 	float val;
 	float speed;
 
-	FloatUniform(const std::string& name, const std::string& displayName, const glm::vec2& range, float default_val, float speed, bool update)
+	FloatUniform(std::string_view name, std::string_view displayName, const glm::vec2& range, float default_val, float speed, bool update)
 		: Uniform(name, displayName, UniformType::FLOAT, update), range(range), default_val(default_val), val(default_val), speed(speed) {}
 
 	void UpdateToShader(GLuint shader) override
@@ -50,7 +50,7 @@ struct ColorUniform : public Uniform
 	glm::vec3 color;
 	glm::vec3 default_color;
 
-	ColorUniform(const std::string& name, const std::string& displayName, const glm::vec3& default_color, bool update)
+	ColorUniform(std::string_view name, std::string_view displayName, const glm::vec3& default_color, bool update)
 		: Uniform(name, displayName, UniformType::COLOR, update), color(default_color), default_color(default_color) {}
 
 	void UpdateToShader(GLuint shader) override
@@ -66,7 +66,7 @@ struct BoolUniform : public Uniform
 	bool val;
 	bool default_val;
 
-	BoolUniform(const std::string& name, const std::string& displayName, bool default_val, bool update)
+	BoolUniform(std::string_view name, std::string_view displayName, bool default_val, bool update)
 		: Uniform(name, displayName, UniformType::BOOL, update), val(default_val), default_val(default_val) {}
 
 	void UpdateToShader(GLuint shader) override

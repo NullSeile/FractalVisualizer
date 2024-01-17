@@ -44,7 +44,7 @@ glm::dvec2 MapCoordsToPos(const glm::uvec2& resolution, double radius, const glm
 	};
 }
 
-FractalVisualizer::FractalVisualizer(const std::string& shaderSrcPath)
+FractalVisualizer::FractalVisualizer(std::filesystem::path shaderSrcPath)
 {
 	SetShader(shaderSrcPath);
 
@@ -207,7 +207,7 @@ void FractalVisualizer::SetSize(const glm::uvec2& size)
 	}
 }
 
-void FractalVisualizer::SetShader(const std::string& shaderSrcPath)
+void FractalVisualizer::SetShader(std::filesystem::path shaderSrcPath)
 {
 	std::ifstream file(shaderSrcPath);
 	m_ShaderSrc = std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());

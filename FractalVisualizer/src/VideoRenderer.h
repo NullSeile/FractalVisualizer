@@ -24,7 +24,7 @@ using KeyFrameList = std::vector<std::shared_ptr<KeyFrame<T>>>;
 class VideoRenderer
 {
 public:
-	void Prepare(const std::string& path, const FractalVisualizer& other);
+	void Prepare(std::filesystem::path, const FractalVisualizer& other);
 	void UpdateIter(double t);
 	void SetColorFunction(const std::shared_ptr<ColorFunction>& new_color);
 	void UpdateToFractal();

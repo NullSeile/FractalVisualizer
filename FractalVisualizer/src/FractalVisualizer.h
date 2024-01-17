@@ -2,6 +2,7 @@
 
 #include <GLCore.h>
 #include <GLCoreUtils.h>
+#include <filesystem>
 
 #include "ColorFunction.h"
 
@@ -12,7 +13,7 @@ glm::dvec2 MapCoordsToPos(const glm::uvec2& resolution, double radius, const glm
 class FractalVisualizer
 {
 public:
-	FractalVisualizer(const std::string& shaderSrcPath);
+	FractalVisualizer(std::filesystem::path shaderSrcPath);
 	~FractalVisualizer();
 
 	void Update();
@@ -26,7 +27,7 @@ public:
 	void SetSize(const glm::uvec2& size);
 	glm::uvec2 GetSize() const { return m_Size; }
 
-	void SetShader(const std::string& shaderSrcPath);
+	void SetShader(std::filesystem::path shaderSrcPath);
 
 	void SetSetColor(const glm::vec3& setColor);
 	glm::vec3 GetSetColor() const { return m_SetColor; };

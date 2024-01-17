@@ -113,7 +113,7 @@ double HermiteLength(const KeyFrame<CenterKey>& p0, const KeyFrame<CenterKey>& p
 	return sum;
 }
 
-void VideoRenderer::Prepare(const std::string& path, const FractalVisualizer& other)
+void VideoRenderer::Prepare(std::filesystem::path path, const FractalVisualizer& other)
 {
 	fract = std::make_unique<FractalVisualizer>(path);
 	fract->SetColorFunction(color);

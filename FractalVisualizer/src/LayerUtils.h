@@ -327,7 +327,12 @@ void FractalHandleResize(FractalVisualizer& fract, int resolutionPercentage)
 		fract.SetSize(glm::uvec2{ viewportPanelSizeScaled.x, viewportPanelSizeScaled.y });
 }
 
-void DrawIterations(const glm::dvec2& z0, const glm::dvec2& c, const ImColor& baseColor, FractalVisualizer& fract, int resolutionPercentage)
+glm::dvec2 mul(const glm::dvec2& a, const glm::dvec2& b)
+{
+	return { a.x*b.x-a.y*b.y, a.x*b.y+a.y*b.x };
+}
+
+void DrawIterations(const glm::dvec2& z0, const glm::dvec2& c, int eqExp, const ImColor& baseColor, FractalVisualizer& fract, int resolutionPercentage)
 {
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
@@ -335,7 +340,11 @@ void DrawIterations(const glm::dvec2& z0, const glm::dvec2& c, const ImColor& ba
 	for (int i = 0; i < 100; i++)
 	{
 		auto p0 = ImagePosToWindowPos(fract.MapPosToCoords(z), resolutionPercentage);
-		z = glm::dvec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
+		auto newZ = z;
+		for (int j = 0; j < eqExp - 1; j++)
+			newZ = mul(newZ, z);
+		z = newZ + c;
+		
 		auto p1 = ImagePosToWindowPos(fract.MapPosToCoords(z), resolutionPercentage);
 
 		float scale = 10.f;

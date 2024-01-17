@@ -227,12 +227,6 @@ void MainLayer::OnImGuiRender()
 {
 	ImGui::DockSpaceOverViewport();
 
-	if (ImGui::IsKeyPressed(ImGuiKey_D))
-		m_ShowDemo = !m_ShowDemo;
-
-	if (ImGui::IsKeyPressed(ImGuiKey_S))
-		m_ShowStyle = !m_ShowStyle;
-
 	if (ImGui::Begin("Plots"))
 	{
 		if (ImPlot::BeginPlot("##Center", ImVec2(-1, 700), ImPlotFlags_Equal))
@@ -291,10 +285,14 @@ void MainLayer::OnImGuiRender()
 
 #if 1
 //#ifdef GLCORE_DEBUG
-	ImPlot::ShowDemoWindow();
+	if (ImGui::IsKeyPressed(ImGuiKey_D))
+		m_ShowDemo = !m_ShowDemo;
 
 	if (m_ShowDemo)
 		ImGui::ShowDemoWindow(&m_ShowDemo);
+
+	if (ImGui::IsKeyPressed(ImGuiKey_S))
+		m_ShowStyle = !m_ShowStyle;
 
 	if (m_ShowStyle)
 	{
@@ -303,6 +301,14 @@ void MainLayer::OnImGuiRender()
 		
 		ImGui::End();
 	}
+
+	static bool showPlotDemo = false;
+	if (ImGui::IsKeyPressed(ImGuiKey_P))
+		showPlotDemo = !showPlotDemo;
+
+	if (showPlotDemo)
+		ImPlot::ShowDemoWindow(&showPlotDemo);
+
 #endif
 
 	if (ImGui::IsKeyPressed(ImGuiKey_H))
@@ -493,7 +499,7 @@ void MainLayer::ShowMandelbrotWindow()
 		PersistentMiddleClick(showIters, c, m_Mandelbrot, m_ResolutionPercentage);
 
 		if (showIters)
-			DrawIterations(c, c, m_IterationsColor, m_Mandelbrot, m_ResolutionPercentage);
+			DrawIterations(c, c, m_EqExponent, m_IterationsColor, m_Mandelbrot, m_ResolutionPercentage);
 
 		if (m_ShowAnimationCenter && m_SelectedFractal == &m_Mandelbrot)
 			ShowCenterKeyFrames(m_Mandelbrot);
@@ -526,7 +532,7 @@ void MainLayer::ShowJuliaWindow()
 		PersistentMiddleClick(showIters, z, m_Julia, m_ResolutionPercentage);
 
 		if (showIters)
-			DrawIterations(z, m_JuliaC, m_IterationsColor, m_Julia, m_ResolutionPercentage);
+			DrawIterations(z, m_JuliaC, m_EqExponent, m_IterationsColor, m_Julia, m_ResolutionPercentage);
 
 		if (m_ShowAnimationCenter && m_SelectedFractal == &m_Julia)
 			ShowCenterKeyFrames(m_Julia);

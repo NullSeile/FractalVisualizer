@@ -35,7 +35,7 @@ public:
 	double GetRadius(double t) const;
 	double GetRadiusInteg(double t) const;
 
-	glm::dvec2 GetCenter(double t);
+	glm::dvec2 GetCenter(double t, double precision = 1e-3);
 
 	int m_CenterSegment = 0;
 	double m_CurrentT = 0.0;
@@ -63,6 +63,7 @@ public:
 
 	KeyFrameList<double> radiusKeyFrames = {
 		std::make_shared<KeyFrame<double>>(0.0, 1.0),
+		// std::make_shared<KeyFrame<double>>(0.0, 1.0),
 		// std::make_shared<KeyFrame<double>>(0.33, 0.008057857721976197),
 		// std::make_shared<KeyFrame<double>>(0.433, 0.28782969446188766),
 		// std::make_shared<KeyFrame<double>>(0.632, 0.006049181474278884),

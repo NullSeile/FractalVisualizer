@@ -229,7 +229,7 @@ double VideoRenderer::GetRadiusInteg(double t) const
 	return a * (1.0 - lt) + b * lt;
 }
 
-glm::dvec2 VideoRenderer::GetCenter(double t)
+glm::dvec2 VideoRenderer::GetCenter(double t, double precision)
 {
 	assert(0.0 <= t && t <= 1.0);
 
@@ -273,7 +273,7 @@ glm::dvec2 VideoRenderer::GetCenter(double t)
 		total_length
 	);
 
-	double step = 1e-4;
+	double step = std::abs(dt) * precision;
 	auto prev = Hermite(*a, *b, m_CurrentLocalT);
 	while (m_CurrentS * sign < target_length * sign)
 	{

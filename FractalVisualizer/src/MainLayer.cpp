@@ -209,9 +209,11 @@ double InterpolateArray(const std::vector<T>& array, double t)
 
 #define N_SAMPLES 1000
 static ImPlotPoint centerPoints[N_SAMPLES];
+#ifdef GLCORE_DEBUG
 static ImPlotPoint centerXPoints[N_SAMPLES];
 static ImPlotPoint centerYPoints[N_SAMPLES];
 static ImPlotPoint radiusPoints[N_SAMPLES];
+#endif
 
 void MainLayer::UpdatePlots()
 {
@@ -221,12 +223,14 @@ void MainLayer::UpdatePlots()
 	{
 		double t = n / (double)(N_SAMPLES - 1);
 
-		glm::dvec2 center = m_VideoRenderer.GetCenter(t);
+		glm::dvec2 center = m_VideoRenderer.GetCenter(t, 1e-1);
 		centerPoints[n] = ImPlotPoint(center.x, center.y);
+#ifdef GLCORE_DEBUG
 		centerXPoints[n] = ImPlotPoint(t, center.x);
 		centerYPoints[n] = ImPlotPoint(t, center.y);
 
 		radiusPoints[n] = ImPlotPoint(t, m_VideoRenderer.GetRadius(t));
+#endif
 	}
 }
 
@@ -1150,6 +1154,10 @@ void MainLayer::ShowRenderWindow()
 					const auto& path = fractal_index == 0 ? m_MandelbrotSrcPath : m_JuliaSrcPath;
 
 					data.Prepare(path, *fract);
+					double dt = data.duration / (double)data.steps;
+
+					data.InvalidateRadius(dt * 1e-3);
+					data.InvalidateCenter();
 
 					auto width = data.resolution.x;
 					auto height = data.resolution.y;

@@ -52,7 +52,7 @@ private:
 	void ShowRenderWindow();
 	void ShowPreviewWindow();
 
-	void ShowCenterKeyFrames(const FractalVisualizer& fract);
+	bool ShowCenterKeyFrames(const FractalVisualizer& fract);
 
 	bool m_VSync = true;
 

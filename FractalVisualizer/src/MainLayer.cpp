@@ -157,7 +157,7 @@ void MainLayer::OnUpdate(GLCore::Timestep ts)
 
 		if (i < data.steps)
 		{
-			data.UpdateIter(i / (float)data.steps);
+			data.UpdateIter(i / (float)(data.steps - 1));
 
 			glBindTexture(GL_TEXTURE_2D, data.fract->GetTexture());
 			glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.pixels);
@@ -439,7 +439,7 @@ bool DragPoint(int n_id, glm::dvec2* point, const FractalVisualizer& fract, int 
     return modified;
 }
 
-void MainLayer::ShowCenterKeyFrames(const FractalVisualizer& fract)
+bool MainLayer::ShowCenterKeyFrames(const FractalVisualizer& fract)
 {
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
@@ -452,30 +452,33 @@ void MainLayer::ShowCenterKeyFrames(const FractalVisualizer& fract)
 	}
 	draw_list->AddPolyline(points.begin(), points.size(), 0xFFFFFFFF, 0, 1.5);
 
-	// for (const auto& p : m_VideoRenderer.centerKeyFrames)
+	bool val_changed = false;
+
 	for (auto [i, p] : std::views::enumerate(m_VideoRenderer.centerKeyFrames))
 	{
 		bool hover = false;
 		if (DragPoint(2*(int)i, &(p->val.pos), fract, m_ResolutionPercentage, ImVec4(1, 1, 1, 1), 5, 0, nullptr, &hover))
-		{
-			UpdatePlots();
-		}
+			val_changed = true;
+		
 		if (hover && ImGui::IsMouseDoubleClicked(0))
 		{
 			if (p->val.vel == glm::dvec2(0))
 				p->val.vel = glm::dvec2(0.0, fract.GetRadius());
 			else
 				p->val.vel = glm::dvec2(0);
-			UpdatePlots();
+
+			val_changed = true;
 		}
 
 		auto handle = p->val.pos + 0.1*p->val.vel;
 		if (DragPoint(2*(int)i + 1, &handle, fract, m_ResolutionPercentage, ImVec4(0.8f, 0.8f, 0.8f, 0.9f), 4))
 		{
 			p->val.vel = (handle - p->val.pos) / 0.1;
-			UpdatePlots();
+			val_changed = true;
 		}
 	}
+
+	return val_changed;
 }
 
 void MainLayer::ShowMandelbrotWindow()
@@ -518,7 +521,13 @@ void MainLayer::ShowMandelbrotWindow()
 			DrawIterations(c, c, m_EqExponent, m_IterationsColor, m_Mandelbrot, m_ResolutionPercentage);
 
 		if (m_ShowAnimationCenter && m_SelectedFractal == &m_Mandelbrot)
-			ShowCenterKeyFrames(m_Mandelbrot);
+		{
+			if (ShowCenterKeyFrames(m_Mandelbrot))
+			{
+				UpdatePlots();
+				m_ShouldUpdatePreview = true;
+			}
+		}
 	}
 	ImGui::End();
 	ImGui::PopStyleVar();
@@ -551,8 +560,13 @@ void MainLayer::ShowJuliaWindow()
 			DrawIterations(z, m_JuliaC, m_EqExponent, m_IterationsColor, m_Julia, m_ResolutionPercentage);
 
 		if (m_ShowAnimationCenter && m_SelectedFractal == &m_Julia)
-			ShowCenterKeyFrames(m_Julia);
-
+		{
+			if (ShowCenterKeyFrames(m_Julia))
+			{
+				UpdatePlots();
+				m_ShouldUpdatePreview = true;
+			}
+		}
 	}
 	ImGui::End();
 	ImGui::PopStyleVar();

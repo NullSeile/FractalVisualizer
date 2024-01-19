@@ -65,17 +65,19 @@ public:
 		std::make_shared<KeyFrame<double>>(0.0, 1.0),
 		// std::make_shared<KeyFrame<double>>(0.0, 1.0),
 		// std::make_shared<KeyFrame<double>>(0.33, 0.008057857721976197),
-		// std::make_shared<KeyFrame<double>>(0.433, 0.28782969446188766),
+		// std::make_shared<KeyFrame<double>>(0.500, 0.28782969446188766),
 		// std::make_shared<KeyFrame<double>>(0.632, 0.006049181474278884),
 		// std::make_shared<KeyFrame<double>>(0.795, 1.172453080986668e-05),
+		// std::make_shared<KeyFrame<double>>(1.0, 1.0),
 	};
 	KeyFrameList<CenterKey> centerKeyFrames = {
 		std::make_shared<KeyFrame<CenterKey>>(0.0, CenterKey{ {0.0, 0.0}, {0.0, 0.0} }),
 		// std::make_shared<KeyFrame<CenterKey>>(0, CenterKey{ {-0.5, 0}, {0.0, 0.0} }),
 		// std::make_shared<KeyFrame<CenterKey>>(0.33, CenterKey{{-1.2558024544068163, 0.38112841375594236}, {0.0, 0.0}}),
-		// std::make_shared<KeyFrame<CenterKey>>(0.433, CenterKey{{-0.8392324486465885, 0.37356936504006194}, {0.0, 0.0}}),
+		// std::make_shared<KeyFrame<CenterKey>>(0.500, CenterKey{{-0.8392324486465885, 0.37356936504006194}, {0.0, 0.0}}),
 		// std::make_shared<KeyFrame<CenterKey>>(0.632, CenterKey{{-0.5973014418167584, 0.6631019637438973}, {0.0, 0.0}}),
 		// std::make_shared<KeyFrame<CenterKey>>(0.795, CenterKey{{-0.5952023547186579, 0.6680937984694201}, {0.0, 0.0}}),
+		// std::make_shared<KeyFrame<CenterKey>>(1.0, CenterKey{ {-0.5, 0}, {0.0, 0.0} }),
 	};
 	std::vector<std::pair<FloatUniform*, KeyFrameList<float>>> uniformsKeyFrames;
 	double cAmplitude = 1e-5;

@@ -253,14 +253,14 @@ void MainLayer::OnImGuiRender()
 			ImPlot::PlotLine("x", &centerXPoints[0].x, &centerXPoints[0].y, N_SAMPLES, 0, 0, sizeof(ImPlotPoint));
 			ImPlot::PlotLine("y", &centerYPoints[0].x, &centerYPoints[0].y, N_SAMPLES, 0, 0, sizeof(ImPlotPoint));
 
-			for (auto [i, p] : std::views::enumerate(m_VideoRenderer.centerKeyFrames))
+			for (auto p : m_VideoRenderer.centerKeyFrames)
 			{
-				auto id = reinterpret_cast<int>(p.get());
+				ImGui::PushID(p.get());
 
-				if (ImPlot::DragPoint(id, &p->val.pos.x, &p->val.pos.y, ImVec4(0.8f, 0.8f, 0.8f, 1.f)))
+				if (ImPlot::DragPoint(0, &p->val.pos.x, &p->val.pos.y, ImVec4(0.8f, 0.8f, 0.8f, 1.f)))
 					UpdatePlots();
 
-				if (ImPlot::DragPoint(id+1, &p->t, &p->val.pos.x, ImVec4(0.8f, 0.8f, 0.8f, 1.f), 4.f, ImPlotDragToolFlags_Delayed))
+				if (ImPlot::DragPoint(1, &p->t, &p->val.pos.x, ImVec4(0.8f, 0.8f, 0.8f, 1.f), 4.f, ImPlotDragToolFlags_Delayed))
 				{
 					if (p->t < 0.0) p->t = 0.0;
 					if (p->t > 1.0) p->t = 1.0;
@@ -268,13 +268,15 @@ void MainLayer::OnImGuiRender()
 					SortKeyFrames(m_VideoRenderer.centerKeyFrames);
 				}
 
-				if (ImPlot::DragPoint(id+2, &p->t, &p->val.pos.y, ImVec4(0.8f, 0.8f, 0.8f, 1.f), 4.f, ImPlotDragToolFlags_Delayed))
+				if (ImPlot::DragPoint(2, &p->t, &p->val.pos.y, ImVec4(0.8f, 0.8f, 0.8f, 1.f), 4.f, ImPlotDragToolFlags_Delayed))
 				{
 					if (p->t < 0.0) p->t = 0.0;
 					if (p->t > 1.0) p->t = 1.0;
 					UpdatePlots();
 					SortKeyFrames(m_VideoRenderer.centerKeyFrames);
 				}
+
+				ImGui::PopID();
 			}
 
 			ImPlot::EndPlot();
@@ -286,14 +288,15 @@ void MainLayer::OnImGuiRender()
 
 			for (auto [i, p] : std::views::enumerate(m_VideoRenderer.radiusKeyFrames))
 			{
-				auto id = reinterpret_cast<int>(p.get());
-				if (ImPlot::DragPoint(id, &p->t, &p->val, ImVec4(0.8f, 0.8f, 0.8f, 1.f), 4.f, ImPlotDragToolFlags_Delayed))
+				ImGui::PushID(p.get());
+				if (ImPlot::DragPoint(0, &p->t, &p->val, ImVec4(0.8f, 0.8f, 0.8f, 1.f), 4.f, ImPlotDragToolFlags_Delayed))
 				{
 					if (p->t < 0.0) p->t = 0.0;
 					if (p->t > 1.0) p->t = 1.0;
 					UpdatePlots();
 					SortKeyFrames(m_VideoRenderer.radiusKeyFrames);
 				}
+				ImGui::PopID();
 			}
 
 			ImPlot::EndPlot();
@@ -454,10 +457,12 @@ bool MainLayer::ShowCenterKeyFrames(const FractalVisualizer& fract)
 
 	bool val_changed = false;
 
-	for (auto [i, p] : std::views::enumerate(m_VideoRenderer.centerKeyFrames))
+	for (auto p : m_VideoRenderer.centerKeyFrames)
 	{
+		ImGui::PushID(p.get());
+
 		bool hover = false;
-		if (DragPoint(2*(int)i, &(p->val.pos), fract, m_ResolutionPercentage, ImVec4(1, 1, 1, 1), 5, 0, nullptr, &hover))
+		if (DragPoint(0, &(p->val.pos), fract, m_ResolutionPercentage, ImVec4(1, 1, 1, 1), 5, 0, nullptr, &hover))
 			val_changed = true;
 		
 		if (hover && ImGui::IsMouseDoubleClicked(0))
@@ -471,11 +476,13 @@ bool MainLayer::ShowCenterKeyFrames(const FractalVisualizer& fract)
 		}
 
 		auto handle = p->val.pos + 0.1*p->val.vel;
-		if (DragPoint(2*(int)i + 1, &handle, fract, m_ResolutionPercentage, ImVec4(0.8f, 0.8f, 0.8f, 0.9f), 4))
+		if (DragPoint(1, &handle, fract, m_ResolutionPercentage, ImVec4(0.8f, 0.8f, 0.8f, 0.9f), 4))
 		{
 			p->val.vel = (handle - p->val.pos) / 0.1;
 			val_changed = true;
 		}
+
+		ImGui::PopID();
 	}
 
 	return val_changed;
